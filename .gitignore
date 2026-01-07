@@ -1,8 +1,3 @@
 /.agent
 /backend
-/database planning.rtf
-/database planning.txt
-/docker-compose.yml
-/google powershell connection.txt
-/shadowpule v2.odt
-/testrestore.txt
+/_private
