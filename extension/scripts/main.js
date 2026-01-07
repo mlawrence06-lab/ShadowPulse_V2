@@ -9,6 +9,7 @@ import { CONFIG } from "./config.js";
 let lastPulseTimestamp = 0;
 let lastFlashTime = 0;
 let lastSelfPulseTime = 0;
+let lastGlobalPulseTime = 0;
 let userPublicId = null;
 let userUuid = null;
 
@@ -130,7 +131,7 @@ function getTopicMetadata() {
          }
     }
 
-    // 2. Refine Topic Title
+    // Refine Topic Title
     topicTitle = topicTitle.replace(/ - Page \d+/, "").replace(/ - Bitcoin Forum$/, "").trim();
 
     return { boardId, topicTitle };
@@ -139,6 +140,30 @@ function getTopicMetadata() {
 
 function startPulsePolling() {
     setInterval(async () => {
+        // A. Global Pulse Check (Logo Flash)
+        if (SETTINGS.sp_flash_logo) {
+             try {
+                 const res = await chrome.runtime.sendMessage({ type: "GET_LATEST_PULSE" });
+                 if (res && res.success && res.data) {
+                     const globalTime = parseFloat(res.data.last_pulse);
+                     
+                     // First run: just sync, don't flash
+                     if (lastGlobalPulseTime === 0) {
+                         lastGlobalPulseTime = globalTime;
+                     } 
+                     // Subsequent runs: Check for new pulse
+                     else if (globalTime > lastGlobalPulseTime) {
+                         lastGlobalPulseTime = globalTime;
+                         // Flash only if not self-pulse (dedupe)
+                         if (Date.now() - lastSelfPulseTime > 3000) {
+                             flashLogoStub();
+                         }
+                     }
+                 }
+             } catch(e) {}
+        }
+
+        // B. Local Pulse Check (Button Flash)
         const visibleBtns = Array.from(document.querySelectorAll('.sp-pulse-btn'));
         // Let's pick 3 random ones to check to avoid network storms.
         for (let i = 0; i < 3; i++) {
@@ -237,6 +262,7 @@ function injectPulseButtons() {
         // --- Scrape Post Metadata ---
         let postTitle = "";
         let postAuthor = "Unknown";
+        let postAuthorUid = 0;
 
         // Author: Look at previous TD (td.poster_info)
         const tr = td.parentElement;
@@ -244,7 +270,11 @@ function injectPulseButtons() {
         if (posterTd) {
             // Usually the first <b><a>Name</a></b> or similar
             const nameLink = posterTd.querySelector('a'); 
-            if (nameLink) postAuthor = nameLink.textContent.trim();
+            if (nameLink) {
+                postAuthor = nameLink.textContent.trim();
+                const uMatch = nameLink.href.match(/u=(\d+)/);
+                if (uMatch) postAuthorUid = uMatch[1];
+            }
         }
 
         // Title: Look for div[id^="subject_"] inside this TD
@@ -280,7 +310,8 @@ function injectPulseButtons() {
             boardId: pageMeta.boardId,
             topicTitle: pageMeta.topicTitle,
             postTitle: postTitle,
-            postAuthor: postAuthor
+            postAuthor: postAuthor,
+            postAuthorUid: postAuthorUid
         });
         wrapper.appendChild(btn);
         
@@ -325,7 +356,8 @@ function createPulseButton(topicId, msgId, meta) {
                 board_id: meta.boardId,
                 topic_title: meta.topicTitle,
                 post_title: meta.postTitle,
-                post_author: meta.postAuthor
+                post_author: meta.postAuthor,
+                post_author_uid: meta.postAuthorUid
             };
 
             const response = await chrome.runtime.sendMessage({ 

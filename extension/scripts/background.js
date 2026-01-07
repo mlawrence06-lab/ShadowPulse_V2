@@ -79,4 +79,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
          
          return true;
     }
+
+    if (request.type === "GET_LATEST_PULSE") {
+        fetch(`${CONFIG.API_BASE_URL}/get_latest_pulse.php?t=${Date.now()}`)
+           .then(res => res.json())
+           .then(data => sendResponse({ success: true, data: data }))
+           .catch(err => sendResponse({ success: false, error: err.message }));
+        
+        return true;
+   }
 });
