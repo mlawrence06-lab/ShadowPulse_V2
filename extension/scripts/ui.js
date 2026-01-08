@@ -107,7 +107,7 @@ export function openSettingsModal() {
                 </div>
 
                 <div class="sp-settings-row" style="justify-content:center; margin-top:8px;">
-                     <a href="http://192.168.1.12:8081/reports/" target="_blank" class="sp-link">Report Center</a>
+                     <a href="https://shadowpulse.live/reports/" target="_blank" class="sp-link">Report Center</a>
                 </div>
 
                 <hr class="sp-sep" />
