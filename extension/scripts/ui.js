@@ -730,7 +730,8 @@ export function renderStats(priceEl, graphEl, data) {
         const isDark = theme === 'dark';
         // Use Trend Color for tint, or generic black/white
         const blockFill = isDark ? '#ffffff' : '#000000';
-        const blockOpacity = '0.07'; 
+        // Increase opacity for Both Modes (User Request: Hard to see)
+        const blockOpacity = '0.15'; 
 
         // Align to 15-min (900s) boundaries
         const firstBlockT = Math.floor(startWindowT / 900) * 900;
@@ -863,8 +864,8 @@ export function injectSearchTable() {
             <tr>
                 <td class="sp-search-col">
                     <div class="sp-search-header">ShadowPulse</div>
-                    <input type="text" id="sp-s-input" placeholder="Search Forum..." />
-                    <button id="sp-s-btn">Go</button>
+                    <input type="text" id="sp-s-input" placeholder="Search Forum..." disabled style="opacity:0.5; cursor:not-allowed;" />
+                    <button id="sp-s-btn" disabled style="opacity:0.5; cursor:not-allowed;">Go</button>
                 </td>
                 <td class="sp-search-col">
                     <div class="sp-search-header">Google</div>
@@ -872,9 +873,9 @@ export function injectSearchTable() {
                     <button id="sp-g-btn">Go</button>
                 </td>
                 <td class="sp-search-col">
-                    <div class="sp-search-header">Ninjastic</div>
-                    <input type="text" id="sp-n-input" placeholder="Advanced..." />
-                    <button id="sp-n-btn">Go</button>
+                    <div class="sp-search-header">BitList</div>
+                    <input type="text" id="sp-n-input" placeholder="Advanced..." disabled style="opacity:0.5; cursor:not-allowed;" />
+                    <button id="sp-n-btn" disabled style="opacity:0.5; cursor:not-allowed;">Go</button>
                 </td>
             </tr>
         `;
@@ -931,8 +932,8 @@ export function injectSearchTable() {
             }
         };
         
-        // Auto-Focus ShadowPulse Input
-        setTimeout(() => document.getElementById('sp-s-input')?.focus(), 100);
+        // Auto-Focus Google Input (SP is disabled)
+        setTimeout(() => document.getElementById('sp-g-input')?.focus(), 100);
         
         bind('sp-s', q => `https://shadowpulse.live/reports/index.php?q=${encodeURIComponent(q)}`);
         bind('sp-g', q => `https://www.google.com/search?q=site:bitcointalk.org ${encodeURIComponent(q)}`);
