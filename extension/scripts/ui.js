@@ -22,15 +22,16 @@ export function openSettingsModal() {
             <div class="sp-settings-header" id="sp-settings-drag-handle" style="cursor:move;">
                 <div class="sp-settings-header-logo" style="margin-right:12px;">
                     <!-- Inline SP Logo -->
-                    <svg width="48" height="48" viewBox="0 0 100 100">
+                    <!-- Standard SVG Logo (Pulse) -->
+                    <svg width="48" height="48" viewBox="0 0 100 100" class="sp-logo-pulse">
                         <defs>
-                            <linearGradient id="sp_logo_grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <linearGradient id="sp_logo_grad_set" x1="0%" y1="0%" x2="100%" y2="100%">
                                 <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
-                                <stop offset="100%" style="stop-color:#1e3a8a;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#1e40af;stop-opacity:1" />
                             </linearGradient>
                         </defs>
-                        <circle cx="50" cy="50" r="48" fill="url(#sp_logo_grad)" />
-                        <text x="50" y="65" font-family="Arial, sans-serif" font-weight="bold" font-size="40" text-anchor="middle" fill="white">SP</text>
+                        <circle cx="50" cy="50" r="48" fill="url(#sp_logo_grad_set)" />
+                        <text x="50" y="66" font-family="Arial, sans-serif" font-weight="800" font-size="42" text-anchor="middle" fill="white" style="pointer-events:none;">SP</text>
                     </svg>
                 </div>
                 <div>
@@ -489,8 +490,18 @@ export function injectFloatingBar() {
     bar.innerHTML = `
         <div class="sp-bar-content">
             <div class="sp-zone-logo" id="sp-logo-zone" title="Open Settings">
-                <div class="sp-logo-circle" data-vote-color="blue">
-                    <div class="sp-logo-text">SP</div>
+                <div class="sp-logo-circle" id="sp-logo-container">
+                    <!-- Standard SVG Logo -->
+                    <svg viewBox="0 0 100 100" class="sp-std-logo">
+                        <defs>
+                            <linearGradient id="sp_logo_grad_float" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#1e40af;stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                        <circle cx="50" cy="50" r="48" fill="url(#sp_logo_grad_float)" />
+                        <text x="50" y="66" font-family="Arial, sans-serif" font-weight="800" font-size="42" text-anchor="middle" fill="white" style="pointer-events:none;">SP</text>
+                    </svg>
                 </div>
             </div>
             
@@ -714,13 +725,40 @@ export function renderStats(priceEl, graphEl, data) {
         const windowSeconds = 3600;
         const startWindowT = lastT - windowSeconds;
 
-        const firstGridT = Math.ceil(startWindowT / 900) * 900;
+        // Determine Theme for Contrast
+        const theme = document.body.getAttribute('data-sp-theme') || 'light';
+        const isDark = theme === 'dark';
+        // Use Trend Color for tint, or generic black/white
+        const blockFill = isDark ? '#ffffff' : '#000000';
+        const blockOpacity = '0.07'; 
+
+        // Align to 15-min (900s) boundaries
+        const firstBlockT = Math.floor(startWindowT / 900) * 900;
         
-        for (let t = firstGridT; t <= lastT; t += 900) {
-            const timeOffset = t - startWindowT;
-            const x = (timeOffset / windowSeconds) * w;
-            // Vertical Ticks: Dynamic Color, Bold Opacity (0.35)
-            grid += `<line x1="${x}" y1="0" x2="${x}" y2="${h}" stroke="${color}" stroke-opacity="0.35" stroke-width="1" stroke-dasharray="2,2" />`;
+        for (let t = firstBlockT; t <= lastT; t += 900) {
+            // Draw Background Block for ALTERNATE intervals
+            const blockIndex = Math.round(t / 900);
+            if (blockIndex % 2 === 0) {
+                const bStart = Math.max(t, startWindowT);
+                const bEnd = Math.min(t + 900, lastT);
+                
+                if (bEnd > bStart) {
+                    const x1 = ((bStart - startWindowT) / windowSeconds) * w;
+                    const x2 = ((bEnd - startWindowT) / windowSeconds) * w;
+                    const bw = x2 - x1;
+                    
+                    // Prepend to grid string so it sits behind lines/path
+                    grid = `<rect x="${x1}" y="0" width="${bw}" height="${h}" fill="${blockFill}" fill-opacity="${blockOpacity}" />` + grid;
+                }
+            }
+
+            // Draw Vertical Tick at the generic 15m mark (if visible)
+            if (t >= startWindowT) {
+                 const timeOffset = t - startWindowT;
+                 const x = (timeOffset / windowSeconds) * w;
+                 // Keep tick for precision, but make it very subtle
+                 grid += `<line x1="${x}" y1="0" x2="${x}" y2="${h}" stroke="${color}" stroke-opacity="0.2" stroke-width="0.5" stroke-dasharray="2,2" />`;
+            }
         }
 
         // Build Path
