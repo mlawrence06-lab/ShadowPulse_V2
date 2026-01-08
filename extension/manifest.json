@@ -1,13 +1,12 @@
 {
   "manifest_version": 3,
-  "name": "ShadowPulse V2",
-  "version": "0.5.11",
-  "description": "BitcoinTalk Real-time Voting (Pilot)",
+  "name": "ShadowPulse",
+  "version": "0.6",
+  "description": "BitcoinTalk Alternative Recognition Tool",
   "permissions": ["storage"],
   "host_permissions": [
     "*://bitcointalk.org/*",
-    "https://shadowpulsev2.b-cdn.net/*",
-    "http://192.168.1.12/*"
+    "https://shadowpulsev2.b-cdn.net/*"
   ],
   "background": {
     "service_worker": "scripts/background.js",
@@ -24,7 +23,6 @@
     {
       "resources": [
         "scripts/main.js",
-        "scripts/votes.js",
         "scripts/utils.js",
         "scripts/words.js",
         "scripts/ui.js",

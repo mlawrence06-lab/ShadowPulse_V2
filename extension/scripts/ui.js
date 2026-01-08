@@ -87,7 +87,7 @@ export function openSettingsModal() {
                     </select>
                 </div>
 
-                <!-- Display Name (V1 Style) -->
+                <!-- Display Name -->
                 <div class="sp-settings-row">
                     <label>Display Name</label>
                     <div style="display:flex; gap:4px; align-items:center;">
@@ -290,7 +290,7 @@ function implementSettingsLogic(backdrop) {
     pulseSel.addEventListener('change', (e) => {
         chrome.storage.local.set({ sp_show_pulse: e.target.value === 'true' });
         // NOTE: "Main.js" loop needs to observe this or reload page. 
-        // For V2 Pilot, a reload is fine, or the loop checks naturally.
+        // A reload is fine, or the loop checks naturally.
         // We will make injectPulseButtons check this in main.js
     });
 
@@ -389,7 +389,7 @@ function implementSettingsLogic(backdrop) {
     });
 
     nameBtn.addEventListener('click', () => {
-        // ... Save Logic (Mock for now or use V1 API URL if CORS permits) ...
+        // ... Save Logic ...
         const val = nameInp.value.trim();
         // Optimistic Save
         chrome.storage.local.set({ custom_name: val, sp_public_id: val });

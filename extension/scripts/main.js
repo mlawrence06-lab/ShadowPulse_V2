@@ -20,7 +20,7 @@ const SETTINGS = {
 };
 
 function init() {
-    spLog("Initializing V2...");
+    spLog("Initializing ShadowPulse...");
 
     // 0. Load Settings Cache
     chrome.storage.local.get(['sp_show_pulse', 'sp_flash_logo'], (res) => {

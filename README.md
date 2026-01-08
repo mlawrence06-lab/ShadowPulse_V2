@@ -1,6 +1,6 @@
 # ShadowPulse V2
 
-ShadowPulse V2 is a browser extension for BitcoinTalk.org that provides real-time "Pulse" tracking and reputation visualization.
+ShadowPulse is a browser extension for BitcoinTalk.org that provides real-time "Pulse" tracking and reputation visualization.
 
 ## Installation
 
