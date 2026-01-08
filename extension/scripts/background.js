@@ -42,12 +42,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     if (request.type === "TRACK_VIEW") {
         const params = new URLSearchParams();
-        if (request.payload.topic_id) params.append('topic_id', request.payload.topic_id);
-        if (request.payload.voter_id) params.append('voter_id', request.payload.voter_id);
-        if (request.payload.board_id) params.append('board_id', request.payload.board_id);
-        if (request.payload.board_id) params.append('board_id', request.payload.board_id);
-        if (request.payload.topic_title) params.append('topic_title', request.payload.topic_title);
-        if (request.payload.uuid) params.append('uuid', request.payload.uuid);
+        // Dynamically append all payload keys (fixes missing board_title/is_board_view)
+        for (const key in request.payload) {
+             if (request.payload[key] !== undefined && request.payload[key] !== null) {
+                 params.append(key, request.payload[key]);
+             }
+        }
 
         fetch(`${CONFIG.API_BASE_URL}/track_view.php`, {
             method: 'POST',

@@ -35,7 +35,10 @@ function init() {
             injectSearchTable();
 
             // 2b. Track View
+            // 2b. Track View
             const topicMatch = window.location.href.match(/topic=(\d+)/);
+            const boardMatch = window.location.href.match(/board=(\d+)/);
+
             if (topicMatch) {
                 const tId = topicMatch[1];
                 const meta = getTopicMetadata(); // Scrape Board/Topic info
@@ -50,6 +53,23 @@ function init() {
                         topic_title: meta.topicTitle
                     }
                 });
+            } else if (boardMatch) {
+               // Track Board Index View
+               const bId = boardMatch[1];
+               // Scrape Title (Board Name)
+               // Title usually: "Board Name - Bitcoin Forum"
+               let bTitle = document.title.replace(" - Bitcoin Forum", "").trim();
+
+               chrome.runtime.sendMessage({
+                   type: "TRACK_VIEW",
+                   payload: {
+                       board_id: bId,
+                       voter_id: userPublicId,
+                       uuid: userUuid,
+                       is_board_view: true,
+                       board_title: bTitle
+                   }
+               });
             }
 
             // 3. Start Polling
