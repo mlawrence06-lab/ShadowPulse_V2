@@ -2,12 +2,12 @@
 
 export function spLog(...args) {
   const ts = new Date().toISOString();
-  console.log("[ShadowPulse V2]", ts, ...args);
+  console.log("[ShadowPulse]", ts, ...args);
 }
 
 export function spError(...args) {
   const ts = new Date().toISOString();
-  console.error("[ShadowPulse V2]", ts, ...args);
+  console.error("[ShadowPulse]", ts, ...args);
 }
 
 export function createEl(tag, classes = [], attrs = {}) {
