@@ -21,7 +21,9 @@
     {
       "matches": ["*://bitcointalk.org/*"],
       "js": ["scripts/loader.js"],
-      "css": ["style/main.css"]
+      "css": ["style/main.css"],
+      "run_at": "document_start",
+      "all_frames": true
     }
   ],
   "web_accessible_resources": [

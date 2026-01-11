@@ -19,6 +19,18 @@ const SETTINGS = {
     sp_flash_logo: true
 };
 
+// --- Trust Score Fixer (Removes inline color:black) ---
+function stripTrustScoreStyles() {
+    // Select all trust score spans
+    const scores = document.querySelectorAll('.trustscore');
+    scores.forEach(el => {
+        // Option 1: Nuke all styles (Safest for this case)
+        el.removeAttribute('style');
+        // Option 2 (Targeted): el.style.removeProperty('color');
+    });
+}
+
+
 function init() {
     spLog("Initializing ShadowPulse...");
 
@@ -45,13 +57,16 @@ function init() {
              localStorage.setItem('sp_theme_sync', theme); // Sync for boot
         }
         
-        // 1. Initialize User ID
+            // 1. Initialize User ID
         initUserId().then(() => {
+            // 1b. Run Theme Patches (JS Force)
+            stripTrustScoreStyles(); 
+
             // 2. Inject UI
             injectPulseButtons();
             injectFloatingBar();
             injectSearchTable();
-
+            
             // 2b. Track View
             // 2b. Track View
             const topicMatch = window.location.href.match(/topic=(\d+)/);
@@ -414,7 +429,6 @@ function createPulseButton(topicId, msgId, meta) {
             if (response && response.success) {
                 spLog("Pulse Sent (BG Success)");
             } else {
-                console.warn("Pulse Rejected/Failed. Triggering Red Flash.");
                 // REJECTED / ERROR: Flash Red
                 btnPulse.classList.remove('sp-flash');
                 void btnPulse.offsetWidth; // Trigger reflow

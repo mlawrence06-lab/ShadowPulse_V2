@@ -82,14 +82,25 @@ html[data-sp-theme="dark"],
 }
 
 /* Post Content & Utility Text Fix */
+/* Post Content & Utility Text Fix */
 [data-sp-theme="dark"] .post, 
 [data-sp-theme="dark"] .inner, 
 [data-sp-theme="dark"] .keyinfo,
 [data-sp-theme="dark"] .smalltext,
 [data-sp-theme="dark"] .middletext,
 [data-sp-theme="dark"] .nav,
-[data-sp-theme="dark"] td {
+[data-sp-theme="dark"] td,
+[data-sp-theme="dark"] #preview_body,
+[data-sp-theme="dark"] #preview_subject,
+[data-sp-theme="dark"] #topic_summary,
+[data-sp-theme="dark"] td[id^="msg"] {
+    background-color: var(--sp-forum-bg) !important; /* Force Dark BG */
     color: var(--sp-forum-text) !important;
+}
+
+/* Trust Score Fix for Dark Mode */
+[data-sp-theme="dark"] .trustscore {
+    color: inherit !important;
 }
 
 /* Navigation & Menu Fixes */
@@ -123,54 +134,97 @@ html[data-sp-theme="custom"],
 }
 
 /* Post Content & Utility Text Fix - Custom */
-[data-sp-theme="custom"] .post, 
 [data-sp-theme="custom"] .inner, 
 [data-sp-theme="custom"] .keyinfo,
 [data-sp-theme="custom"] .smalltext,
 [data-sp-theme="custom"] .middletext,
 [data-sp-theme="custom"] .nav,
-[data-sp-theme="custom"] td {
-    color: var(--sp-forum-text, #000000) !important;
-}
-
-[data-sp-theme="custom"] .windowbg,
-[data-sp-theme="custom"] .windowbg2,
-[data-sp-theme="custom"] .windowbg3 {
-  background-color: var(--sp-forum-window-bg, #f0f0f0) !important;
+[data-sp-theme="custom"] .nav,
+[data-sp-theme="custom"] body {
   color: var(--sp-forum-text, #000000) !important;
 }
-[data-sp-theme="custom"] .catbg,
-[data-sp-theme="custom"] .catbg2,
-[data-sp-theme="custom"] tr.catbg td,
-[data-sp-theme="custom"] tr.catbg2 td {
+[data-sp-theme="custom"] td,
+[data-sp-theme="custom"] th,
+[data-sp-theme="custom"] td[id^="msg"],
+[data-sp-theme="custom"] .smalltext,
+[data-sp-theme="custom"] .middletext,
+[data-sp-theme="custom"] .normaltext {
+  color: var(--sp-forum-text, #000000) !important;
+}
+
+/* === SMF Custom Theme Overrides === */
+/* Unified Background Color Override */
+/* Targets all standard containers + specific high-specificity IDs */
+html[data-sp-theme="custom"] .windowbg,
+html[data-sp-theme="custom"] .windowbg2,
+html[data-sp-theme="custom"] .windowbg3,
+html[data-sp-theme="custom"] .roundframe,
+html[data-sp-theme="custom"] .catbg3,
+html[data-sp-theme="custom"] td[id^="msg"],      /* Topic Summary Cells */
+html[data-sp-theme="custom"] #preview_body,       /* Post Preview Body */
+html[data-sp-theme="custom"] #preview_subject,    /* Post Preview Subject */
+html[data-sp-theme="custom"] #preview_section,    /* Preview Container */
+html[data-sp-theme="custom"] #topic_summary       /* Topic Summary Container */
+{
+  background: var(--sp-forum-window-bg, #f0f0f0) !important;
+  background-image: none !important;
+  color: var(--sp-forum-text, #000000) !important;
+}
+
+/* Category Headers */
+html[data-sp-theme="custom"] .catbg,
+html[data-sp-theme="custom"] .catbg2,
+html[data-sp-theme="custom"] tr.catbg td,
+html[data-sp-theme="custom"] tr.catbg2 td {
   background-color: var(--sp-forum-cat-bg, #6699cc) !important;
   color: var(--sp-forum-cat-text, #ffffff) !important;
   background-image: none !important;
 }
-[data-sp-theme="custom"] .titlebg,
-[data-sp-theme="custom"] .titlebg2,
-[data-sp-theme="custom"] tr.titlebg td,
-[data-sp-theme="custom"] tr.titlebg2 td {
+
+/* Title Headers */
+html[data-sp-theme="custom"] .titlebg,
+html[data-sp-theme="custom"] .titlebg2,
+html[data-sp-theme="custom"] tr.titlebg td,
+html[data-sp-theme="custom"] tr.titlebg2 td {
   background-color: var(--sp-forum-title-bg, #dce4e9) !important;
   color: var(--sp-forum-text, #000000) !important;
   background-image: none !important;
 }
-[data-sp-theme="custom"] .bordercolor {
+
+/* Borders */
+html[data-sp-theme="custom"] .bordercolor,
+html[data-sp-theme="custom"] .tborder {
   background-color: var(--sp-forum-border, #000000) !important;
 }
-[data-sp-theme="custom"] .tborder {
-  background-color: var(--sp-forum-border, #000000) !important;
+html[data-sp-theme="custom"] .tborder {
   border: 1px solid var(--sp-forum-border, #000000) !important;
 }
-[data-sp-theme="custom"] .quote {
+
+/* Quotes */
+html[data-sp-theme="custom"] .quote {
   background-color: var(--sp-forum-quote-bg, #e7e7e7) !important;
   border: 1px solid var(--sp-forum-border, #000000) !important;
   color: var(--sp-forum-text, #000000) !important;
 }
-[data-sp-theme="custom"] textarea,
-[data-sp-theme="custom"] input[type="text"],
-[data-sp-theme="custom"] select {
-  /* Fallback to window-bg if input-bg is missing, then white */
+
+/* Transparent Content Wrappers */
+/* Ensure .post and .inner inside these are also handled if needed */
+html[data-sp-theme="custom"] .post,
+html[data-sp-theme="custom"] .inner {
+  background-color: transparent !important;
+  color: var(--sp-forum-text, #000000) !important;
+}
+
+/* Specific fix for Trust Score numbers (User Reported: .trustscore) */
+/* Specific fix for Trust Score numbers (User Reported: .trustscore) */
+html[data-sp-theme="custom"] .trustscore {
+  color: inherit !important;
+}
+
+/* Inputs */
+html[data-sp-theme="custom"] textarea,
+html[data-sp-theme="custom"] input[type="text"],
+html[data-sp-theme="custom"] select {
   background-color: var(--sp-forum-input-bg, var(--sp-forum-window-bg, #ffffff)) !important;
   color: var(--sp-forum-text, #000000) !important;
   border: 1px solid var(--sp-forum-border, #888) !important;
