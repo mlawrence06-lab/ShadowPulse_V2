@@ -171,52 +171,70 @@ export function openSettingsModal() {
     document.body.appendChild(backdrop);
     setTimeout(() => backdrop.classList.add('sp-settings-open'), 10);
 
-    // --- Modal Drag Logic ---
+    // --- Modal Drag Logic (Mouse & Touch) ---
     const modal = backdrop.querySelector('#sp-settings-window');
     const handle = backdrop.querySelector('#sp-settings-drag-handle');
     
     let isDragging = false;
     let startX, startY, initialLeft, initialTop;
 
-    handle.addEventListener('mousedown', (e) => {
+    const getClientCoords = (e) => {
+        if (e.touches && e.touches.length > 0) {
+            return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        }
+        return { x: e.clientX, y: e.clientY };
+    };
+
+    const onDragStart = (e) => {
         // Ignore close button clicks
         if(e.target.closest('.sp-settings-close')) return;
         
         isDragging = true;
-        startX = e.clientX;
-        startY = e.clientY;
+        const coords = getClientCoords(e);
+        startX = coords.x;
+        startY = coords.y;
         
+        // Prevent default only for touch to stop scroll/zoom
+        if(e.type === 'touchstart') e.preventDefault();
+
         // Disable centering transform when starting drag (if any)
-        // We need to switch to absolute positioning relative to viewport if it isn't already
-        // But the backdrop centers it flexbox-style. 
-        // Strategy: Switch modal to absolute positioning on first drag.
-        
         const rect = modal.getBoundingClientRect();
         modal.style.position = 'absolute';
         modal.style.left = rect.left + 'px';
         modal.style.top = rect.top + 'px';
-        modal.style.transform = 'none'; // Remove any flex centering effects if present
+        modal.style.transform = 'none'; 
         
         initialLeft = rect.left;
         initialTop = rect.top;
         
         handle.style.cursor = 'grabbing';
-    });
+    };
 
-    window.addEventListener('mousemove', (e) => {
+    const onDragMove = (e) => {
         if (!isDragging) return;
-        e.preventDefault();
-        const dx = e.clientX - startX;
-        const dy = e.clientY - startY;
+        e.preventDefault(); // Stop Scroll
+
+        const coords = getClientCoords(e);
+        const dx = coords.x - startX;
+        const dy = coords.y - startY;
         
         modal.style.left = (initialLeft + dx) + 'px';
         modal.style.top = (initialTop + dy) + 'px';
-    });
+    };
 
-    window.addEventListener('mouseup', () => {
+    const onDragEnd = () => {
         isDragging = false;
         handle.style.cursor = 'move';
-    });
+    };
+
+    handle.addEventListener('mousedown', onDragStart);
+    window.addEventListener('mousemove', onDragMove);
+    window.addEventListener('mouseup', onDragEnd);
+    
+    // Touch
+    handle.addEventListener('touchstart', onDragStart, {passive: false});
+    window.addEventListener('touchmove', onDragMove, {passive: false});
+    window.addEventListener('touchend', onDragEnd);
 
     // --- Logic Implementation ---
     implementSettingsLogic(backdrop);
@@ -559,7 +577,7 @@ export function injectFloatingBar() {
 
     document.body.appendChild(bar);
 
-    // --- Robust Drag Logic ---
+    // --- Robust Drag Logic (Mouse & Touch) ---
     let isDragging = false;
     let hasMoved = false;
     let dragOffsetX = 0;
@@ -595,35 +613,53 @@ export function injectFloatingBar() {
         }
     });
 
-    const onMouseDown = (e) => {
+    const getClientCoords = (e) => {
+        if (e.touches && e.touches.length > 0) {
+            return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        }
+        return { x: e.clientX, y: e.clientY };
+    };
+
+    const onDragStart = (e) => {
+        // Allow Interaction with Content if not obviously dragging?
+        // Actually, floating bar is small. Let's just drag.
+        // But exclude stats inputs? No inputs there.
+        
         isDragging = true;
         hasMoved = false;
-        startX = e.clientX;
-        startY = e.clientY;
         
-        e.preventDefault(); 
+        const coords = getClientCoords(e);
+        startX = coords.x;
+        startY = coords.y;
+        
+        // Prevent default only if needed (scroll)
+        if(e.type === 'mousedown') e.preventDefault(); 
         
         const rect = bar.getBoundingClientRect();
-        dragOffsetX = e.clientX - rect.left;
-        dragOffsetY = e.clientY - rect.top;
+        dragOffsetX = coords.x - rect.left;
+        dragOffsetY = coords.y - rect.top;
         
         bar.classList.add('dragging');
         document.body.classList.add('sp-dragging');
     };
 
-    const onMouseMove = (e) => {
+    const onDragMove = (e) => {
         if (!isDragging) return;
-        e.preventDefault();
+        
+        // Prevent Scroll on Mobile while dragging
+        if(e.type === 'touchmove') e.preventDefault(); 
+        if(e.type === 'mousemove') e.preventDefault();
 
-        const dx = Math.abs(e.clientX - startX);
-        const dy = Math.abs(e.clientY - startY);
+        const coords = getClientCoords(e);
+        const dx = Math.abs(coords.x - startX);
+        const dy = Math.abs(coords.y - startY);
         // Threshold for "movement"
         if (dx > 3 || dy > 3) {
             hasMoved = true;
         }
 
-        let newX = e.clientX - dragOffsetX;
-        let newY = e.clientY - dragOffsetY;
+        let newX = coords.x - dragOffsetX;
+        let newY = coords.y - dragOffsetY;
 
         // Clamp to screen
         const maxW = window.innerWidth - bar.offsetWidth;
@@ -636,7 +672,7 @@ export function injectFloatingBar() {
         bar.style.top = newY + 'px';
     };
 
-    const onMouseUp = (e) => {
+    const onDragEnd = (e) => {
         if (!isDragging) return;
         isDragging = false;
         bar.classList.remove('dragging');
@@ -650,6 +686,7 @@ export function injectFloatingBar() {
         }
         
         // Handle "Click" on Logo here if it wasn't a move
+        // Touch events might not fire 'click' reliably if we preventDefaulted move
         if (!hasMoved && e.target.closest('#sp-logo-zone')) {
              openSettingsModal();
         }
@@ -675,9 +712,15 @@ export function injectFloatingBar() {
     };
 
     // Attach Listeners
-    bar.addEventListener('mousedown', onMouseDown);
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
+    bar.addEventListener('mousedown', onDragStart);
+    window.addEventListener('mousemove', onDragMove);
+    window.addEventListener('mouseup', onDragEnd);
+    
+    // Touch
+    bar.addEventListener('touchstart', onDragStart, {passive: false});
+    window.addEventListener('touchmove', onDragMove, {passive: false}); // Non-passive to allow preventDefault
+    window.addEventListener('touchend', onDragEnd);
+    
     window.addEventListener('resize', onResize);
 
     // --- Start Stats Loop ---
@@ -1189,36 +1232,58 @@ export async function openThemeEditor() {
 
     document.body.appendChild(backdropCtx);
 
-    // --- Drag Logic ---
+    // --- Drag Logic (Mouse & Touch) ---
     let isDragging = false;
     let startX, startY, initialLeft, initialTop;
     
-    header.addEventListener('mousedown', (e) => {
+    const getClientCoords = (e) => {
+        if (e.touches && e.touches.length > 0) {
+            return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        }
+        return { x: e.clientX, y: e.clientY };
+    };
+
+    const onDragStart = (e) => {
         if(e.target.closest('.sp-settings-close')) return;
         isDragging = true;
-        startX = e.clientX;
-        startY = e.clientY;
+        const coords = getClientCoords(e);
+        startX = coords.x;
+        startY = coords.y;
+        
+        if(e.type === 'touchstart') e.preventDefault();
+
         const rect = editorRoot.getBoundingClientRect();
         initialLeft = rect.left;
         initialTop = rect.top;
         
         header.style.cursor = 'grabbing';
-    });
+    };
 
-    window.addEventListener('mousemove', (e) => {
+    const onDragMove = (e) => {
         if (!isDragging) return;
         e.preventDefault();
-        const dx = e.clientX - startX;
-        const dy = e.clientY - startY;
+        
+        const coords = getClientCoords(e);
+        const dx = coords.x - startX;
+        const dy = coords.y - startY;
         
         editorRoot.style.left = (initialLeft + dx) + 'px';
         editorRoot.style.top = (initialTop + dy) + 'px';
-    });
+    };
 
-    window.addEventListener('mouseup', () => {
+    const onDragEnd = () => {
         if(isDragging) {
             isDragging = false;
             header.style.cursor = 'grab';
         }
-    });
+    };
+
+    header.addEventListener('mousedown', onDragStart);
+    window.addEventListener('mousemove', onDragMove);
+    window.addEventListener('mouseup', onDragEnd);
+
+    // Touch
+    header.addEventListener('touchstart', onDragStart, {passive: false});
+    window.addEventListener('touchmove', onDragMove, {passive: false});
+    window.addEventListener('touchend', onDragEnd);
 }
