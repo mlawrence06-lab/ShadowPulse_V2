@@ -36,25 +36,45 @@ function init() {
 
     // 0. Load Settings Cache
     // 0. Load Settings Cache
-    chrome.storage.local.get(['sp_show_pulse', 'sp_flash_logo', 'sp_theme', 'sp_custom_theme'], (res) => {
+    chrome.storage.local.get([
+        'sp_show_pulse', 'sp_flash_logo', 
+        'sp_theme', 
+        'sp_custom_light', 'sp_custom_dark',
+        'sp_custom_theme' // Legacy
+    ], (res) => {
         if (res.sp_show_pulse !== undefined) SETTINGS.sp_show_pulse = res.sp_show_pulse;
         if (res.sp_flash_logo !== undefined) SETTINGS.sp_flash_logo = res.sp_flash_logo;
         
-        // Theme Loader
-        const theme = res.sp_theme || 'light';
+        // Theme Loader (Dual Profile)
+        let theme = res.sp_theme || 'light';
         
-        if (theme === 'custom' && res.sp_custom_theme) {
-             // Apply Custom CSS Variables
-             const t = res.sp_custom_theme;
-             Object.keys(t).forEach(key => {
+        // MIGRATION: If legacy 'custom', move to 'dark' profile (assumption)
+        if (theme === 'custom') {
+            theme = 'dark';
+            // If we have legacy vars but no new vars, migrate them in memory (save later?)
+            // For now, let's just use the legacy vars if sp_custom_dark is missing.
+            if (!res.sp_custom_dark && res.sp_custom_theme) {
+                res.sp_custom_dark = res.sp_custom_theme;
+            }
+        }
+
+        // Apply Logic
+        const profileVars = (theme === 'light') ? res.sp_custom_light : res.sp_custom_dark;
+        
+        // 1. Flush (Safety)
+        document.body.removeAttribute('style');
+
+        // 2. Set Base
+        document.documentElement.setAttribute('data-sp-theme', theme);
+        localStorage.setItem('sp_theme_sync', theme); // Sync for boot
+
+        // 3. Apply Custom if exists
+        if (profileVars) {
+            Object.keys(profileVars).forEach(key => {
                  const varName = key.startsWith('--') ? key : `--sp-forum-${key.replace('_','-')}`;
-                 document.body.style.setProperty(varName, t[key]);
-             });
-             document.documentElement.setAttribute('data-sp-theme', 'custom');
-             localStorage.setItem('sp_theme_sync', 'custom'); // Sync for boot
-        } else {
-             document.documentElement.setAttribute('data-sp-theme', theme);
-             localStorage.setItem('sp_theme_sync', theme); // Sync for boot
+                 document.body.style.setProperty(varName, profileVars[key]);
+            });
+            document.documentElement.setAttribute('data-sp-theme', 'custom');
         }
         
             // 1. Initialize User ID

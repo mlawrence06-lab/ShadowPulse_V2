@@ -51,7 +51,6 @@ export function openSettingsModal() {
                         <select id="sp-theme-select" style="width:80px;">
                             <option value="light">Light</option>
                             <option value="dark">Dark</option>
-                            <option value="custom">Custom</option>
                         </select>
                     </div>
                 </div>
@@ -228,6 +227,33 @@ export function openSettingsModal() {
     }
 }
 
+// === NEW: Helper to Apply Theme Logic (shared concept) ===
+function applyThemeLogic(themeMode) {
+    // 1. Flush Inline Styles (The "Nuclear" option for Light Mode purity)
+    document.body.removeAttribute('style'); 
+    
+    // 2. Set Base Attribute
+    document.documentElement.setAttribute('data-sp-theme', themeMode);
+    localStorage.setItem('sp_theme_sync', themeMode);
+
+    // 3. Load Customization for THIS mode
+    const storageKey = `sp_custom_${themeMode}`; // e.g. sp_custom_light
+    
+    chrome.storage.local.get([storageKey], (res) => {
+        const customObj = res[storageKey];
+        if (customObj) {
+            // APPLY CUSTOM VARS
+            Object.keys(customObj).forEach(key => {
+                 const varName = key.startsWith('--') ? key : `--sp-forum-${key.replace('_','-')}`;
+                 document.body.style.setProperty(varName, customObj[key]);
+            });
+            // Mark as Custom so CSS overrides kick in
+            document.documentElement.setAttribute('data-sp-theme', 'custom');
+        }
+        // If no customObj, we just stick with the base data-sp-theme=mode we set in step 2.
+    });
+}
+
 function implementSettingsLogic(backdrop) {
     // ... Close handlers ...
     const closeBtn = backdrop.querySelector('.sp-settings-close');
@@ -262,7 +288,10 @@ function implementSettingsLogic(backdrop) {
     const flashSel = backdrop.querySelector('#sp-flash-logo-select');
 
     chrome.storage.local.get(['sp_theme', 'sp_btc_source', 'sp_show_graph', 'sp_show_pulse', 'sp_flash_logo'], res => {
-        const theme = res.sp_theme || 'light';
+        let theme = res.sp_theme || 'light';
+        // Migration Fix: if 'custom', force to 'dark' (safest assumption for existing users)
+        if (theme === 'custom') theme = 'dark'; 
+        
         themeSel.value = theme;
         
         // Graph Defaults to YES (true) unless explicitly false
@@ -274,22 +303,12 @@ function implementSettingsLogic(backdrop) {
         
         pulseSel.value = (res.sp_show_pulse !== false) ? "true" : "false";
         flashSel.value = (res.sp_flash_logo !== false) ? "true" : "false";
-
-        // FORCE APPLY THEME on Open
-        document.documentElement.setAttribute('data-sp-theme', theme);
-        
-        // If theme is 'custom', the select will default to 'light' (first option) visibly, 
-        // but we want to show it as "Modified" or just leave it. 
-        // User said "Light/Dark themes are coded and can be recovered".
-        // So clicking Light/Dark should switch AWAY from custom.
-        // Clicking "Save" in editor should switch TO custom.
     });
 
     themeSel.addEventListener('change', (e) => {
         const val = e.target.value;
         chrome.storage.local.set({ sp_theme: val });
-        document.documentElement.setAttribute('data-sp-theme', val);
-        localStorage.setItem('sp_theme_sync', val); // Sync for boot
+        applyThemeLogic(val);
     });
     
     // Open Theme Editor Handler
@@ -970,6 +989,7 @@ export function injectSearchTable() {
     }
 }
 
+// --- Theme Editor (Dual Profile Support) ---
 export async function openThemeEditor() {
     let editorRoot = document.getElementById('sp-theme-editor-root');
     if (editorRoot) {
@@ -977,9 +997,16 @@ export async function openThemeEditor() {
         return;
     }
 
-    // 1. Determine Starting Colors based on CURRENT selection
+    // 1. Determine Current Theme Mode (Light vs Dark)
+    // We only edit the *active* mode
     const themeSel = document.getElementById('sp-theme-select');
-    const currentTheme = (themeSel ? themeSel.value : null) || 'light';
+    // If we are somehow in 'custom' mode legacy, we need to know if it's based on light or dark.
+    // For now, let's rely on the Select value which we force to 'light' or 'dark' in the new UI.
+    const currentMode = (themeSel ? themeSel.value : 'light'); 
+    
+    // Key: sp_custom_light OR sp_custom_dark
+    const storageKey = `sp_custom_${currentMode}`;
+
     let startColors = {};
 
     // Hardcoded defaults to match CSS
@@ -996,22 +1023,25 @@ export async function openThemeEditor() {
         }
     };
 
-    if (currentTheme === 'custom') {
-        // If already custom, load stored custom or fallback to light defaults
-        try {
-            const stored = await chrome.storage.local.get('sp_custom_theme');
-            startColors = stored.sp_custom_theme || defaults.light;
-        } catch (e) {
-            console.error("Error loading theme:", e);
-            startColors = defaults.light;
+    // Load Existing Customization for THIS mode
+    try {
+        const stored = await chrome.storage.local.get(storageKey);
+        startColors = stored[storageKey] || defaults[currentMode];
+        
+        // MIGRATION CHECK: If no custom dark exists, check legacy 'sp_custom_theme'? 
+        // Only if mode is dark.
+        if (currentMode === 'dark' && !stored[storageKey]) {
+             const legacy = await chrome.storage.local.get('sp_custom_theme');
+             if(legacy.sp_custom_theme) startColors = legacy.sp_custom_theme;
         }
-    } else {
-        // If Light or Dark, start with those exact colors
-        startColors = defaults[currentTheme] || defaults.light;
+
+    } catch (e) {
+        console.error("Error loading theme:", e);
+        startColors = defaults[currentMode];
     }
     
     // Safety Fallback
-    if(!startColors.bg) startColors = defaults.light;
+    if(!startColors.bg) startColors = defaults[currentMode];
 
     // Create BACKDROP to block settings window
     // Settings has Z-Index ~20M (from CSS observation or assumption). 
@@ -1042,7 +1072,7 @@ export async function openThemeEditor() {
         id: 'sp-theme-drag-handle',
         style: 'padding: 15px; background: rgba(30, 41, 59, 0.8); border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; cursor: grab;'
     });
-    header.innerHTML = '<span style="font-weight: 600; font-size: 14px;">Theme Editor</span>';
+    header.innerHTML = `<span style="font-weight: 600; font-size: 14px;">Editor: ${currentMode.toUpperCase()}</span>`;
     const closeBtn = createEl('button', 'sp-settings-close', {
         style: 'background: none; border: none; color: #94a3b8; font-size: 16px; cursor: pointer;'
     });
@@ -1058,7 +1088,7 @@ export async function openThemeEditor() {
     // Live Preview Helper
     const applyPreview = (key, hex) => {
         document.body.style.setProperty(`--sp-forum-${key.replace('_','-')}`, hex);
-        document.documentElement.setAttribute('data-sp-theme', 'custom');
+        document.documentElement.setAttribute('data-sp-theme', 'custom'); 
     };
 
     // UI Mappings
@@ -1121,16 +1151,14 @@ export async function openThemeEditor() {
             newTheme[m.key] = picker ? picker.value : m.val;
         });
         
+        // Save to SPECIFIC PROFILE
         chrome.storage.local.set({ 
-            sp_custom_theme: newTheme,
-            sp_theme: 'custom'
+            [storageKey]: newTheme,
+            // We do NOT set sp_theme='custom' anymore. We stay in 'light' or 'dark'.
+            // The presence of [storageKey] means we load it.
         }, () => {
-             document.documentElement.setAttribute('data-sp-theme', 'custom');
-             localStorage.setItem('sp_theme_sync', 'custom'); // Sync to boot
-             
-             // SYNC SETTINGS DROPDOWN
-             const settingsDrop = document.getElementById('sp-theme-select');
-             if(settingsDrop) settingsDrop.value = 'custom';
+             // Reload Theme Application
+             applyThemeLogic(currentMode);
              
              const oldText = saveBtn.innerText;
              saveBtn.innerText = "SAVED!";
@@ -1146,26 +1174,12 @@ export async function openThemeEditor() {
     resetBtn.innerText = 'RESET';
     
     resetBtn.onclick = () => {
-        if(confirm("Discard all custom theme changes and revert to standard Light/Dark themes?")) {
-            chrome.storage.local.remove(['sp_custom_theme']);
-            const themeSel = document.getElementById('sp-theme-select');
-            
-            // If currently custom, default to light. If already light/dark, keep it?
-            // Actually, if we reset, we probably want to go to the "base" of whatever was selected 
-            // OR just default to Light. 
-            // User logic: "Revert to standard Light/Dark".
-            // Let's default to Light if we can't determine.
-            const originalTheme = (themeSel && themeSel.value !== 'custom') ? themeSel.value : 'light';
-            
-            chrome.storage.local.set({ sp_theme: originalTheme });
-            document.documentElement.setAttribute('data-sp-theme', originalTheme);
-            document.body.style = ""; // Clear overrides
-            localStorage.setItem('sp_theme_sync', originalTheme);
-            
-            // SYNC DROPDOWN
-            if(themeSel) themeSel.value = originalTheme;
-            
-            closeEditor();
+        if(confirm(`Reset ${currentMode.toUpperCase()} theme to defaults?`)) {
+            // Remove the specific key
+            chrome.storage.local.remove([storageKey], () => {
+                applyThemeLogic(currentMode);
+                closeEditor();
+            });
         }
     };
     
@@ -1175,7 +1189,7 @@ export async function openThemeEditor() {
 
     document.body.appendChild(backdropCtx);
 
-    // --- Drag Logic (Updated for Absolute Positioning) ---
+    // --- Drag Logic ---
     let isDragging = false;
     let startX, startY, initialLeft, initialTop;
     
@@ -1185,8 +1199,6 @@ export async function openThemeEditor() {
         startX = e.clientX;
         startY = e.clientY;
         const rect = editorRoot.getBoundingClientRect();
-        // Since editorRoot is absolute inside backdrop, left/top should be relative to viewport (since backdrop is fixed 0,0)
-        // correct.
         initialLeft = rect.left;
         initialTop = rect.top;
         
