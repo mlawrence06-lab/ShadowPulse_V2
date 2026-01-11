@@ -46,10 +46,14 @@ export function openSettingsModal() {
                 <!-- Theme -->
                 <div class="sp-settings-row">
                     <label>Theme</label>
-                    <select id="sp-theme-select">
-                        <option value="light">Light</option>
-                        <option value="dark">Dark</option>
-                    </select>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <a href="#" id="sp-theme-customize-link" class="sp-link" style="font-size:11px; color:var(--sp-accent);">Customize</a>
+                        <select id="sp-theme-select" style="width:80px;">
+                            <option value="light">Light</option>
+                            <option value="dark">Dark</option>
+                            <option value="custom">Custom</option>
+                        </select>
+                    </div>
                 </div>
 
                 <!-- Show Graph (New) -->
@@ -239,7 +243,18 @@ function implementSettingsLogic(backdrop) {
     closeBtn.title = "Close";
 
     // ... Controls ...
+    // ... Controls ...
     const themeSel = backdrop.querySelector('#sp-theme-select');
+    const custLink = backdrop.querySelector('#sp-theme-customize-link');
+    
+    if (custLink) {
+        custLink.addEventListener('click', (e) => {
+             e.preventDefault();
+             e.stopPropagation(); // Stop bubbling to prevent closing settings
+             openThemeEditor();
+        });
+    }
+
     const graphSel = backdrop.querySelector('#sp-show-graph-select');
     const btcRow = backdrop.querySelector('#sp-btc-row');
     const btcSel = backdrop.querySelector('#sp-btc-select');
@@ -261,14 +276,25 @@ function implementSettingsLogic(backdrop) {
         flashSel.value = (res.sp_flash_logo !== false) ? "true" : "false";
 
         // FORCE APPLY THEME on Open
-        document.body.setAttribute('data-sp-theme', theme);
+        document.documentElement.setAttribute('data-sp-theme', theme);
+        
+        // If theme is 'custom', the select will default to 'light' (first option) visibly, 
+        // but we want to show it as "Modified" or just leave it. 
+        // User said "Light/Dark themes are coded and can be recovered".
+        // So clicking Light/Dark should switch AWAY from custom.
+        // Clicking "Save" in editor should switch TO custom.
     });
 
     themeSel.addEventListener('change', (e) => {
         const val = e.target.value;
         chrome.storage.local.set({ sp_theme: val });
-        document.body.setAttribute('data-sp-theme', val);
+        document.documentElement.setAttribute('data-sp-theme', val);
+        localStorage.setItem('sp_theme_sync', val); // Sync for boot
     });
+    
+    // Open Theme Editor Handler
+    // Open Theme Editor Handler - Redundant block removed
+
     
     // Show Graph Logic
     graphSel.addEventListener('change', (e) => {
@@ -506,7 +532,7 @@ export function injectFloatingBar() {
             </div>
             
             <div class="sp-zone-stats" id="sp-stats-zone">
-                 <div class="sp-stats-price">Loading...</div>
+                 <div class="sp-stats-price">&nbsp;</div>
                  <div class="sp-stats-graph"></div>
             </div>
         </div>
@@ -655,6 +681,9 @@ function startStatsLoop(bar) {
     let lastValidTime = 0;
 
     const update = async () => {
+        // Optimization: Pause when tab is hidden
+        if (document.hidden) return;
+
         // Check DOM visibility of the PARENT zone
         const statsZone = bar.querySelector('#sp-stats-zone');
         if (statsZone && statsZone.style.display === 'none') {
@@ -939,4 +968,245 @@ export function injectSearchTable() {
         bind('sp-g', q => `https://www.google.com/search?q=site:bitcointalk.org ${encodeURIComponent(q)}`);
         bind('sp-n', q => `https://ninjastic.space/search?q=${encodeURIComponent(q)}`);
     }
+}
+
+export async function openThemeEditor() {
+    let editorRoot = document.getElementById('sp-theme-editor-root');
+    if (editorRoot) {
+        editorRoot.style.display = 'flex';
+        return;
+    }
+
+    // 1. Determine Starting Colors based on CURRENT selection
+    const themeSel = document.getElementById('sp-theme-select');
+    const currentTheme = (themeSel ? themeSel.value : null) || 'light';
+    let startColors = {};
+
+    // Hardcoded defaults to match CSS
+    const defaults = {
+        light: {
+            'bg': '#ffffff', 'text': '#000000', 'link': '#0000ff',
+            'cat_bg': '#6699cc', 'cat_text': '#ffffff',
+            'title_bg': '#dce4e9', 'window_bg': '#f0f0f0'
+        },
+        dark: {
+            'bg': '#0f172a', 'text': '#cbd5e1', 'link': '#60a5fa',
+            'cat_bg': '#1e293b', 'cat_text': '#f8fafc',
+            'title_bg': '#334155', 'window_bg': '#1e293b'
+        }
+    };
+
+    if (currentTheme === 'custom') {
+        // If already custom, load stored custom or fallback to light defaults
+        try {
+            const stored = await chrome.storage.local.get('sp_custom_theme');
+            startColors = stored.sp_custom_theme || defaults.light;
+        } catch (e) {
+            console.error("Error loading theme:", e);
+            startColors = defaults.light;
+        }
+    } else {
+        // If Light or Dark, start with those exact colors
+        startColors = defaults[currentTheme] || defaults.light;
+    }
+    
+    // Safety Fallback
+    if(!startColors.bg) startColors = defaults.light;
+
+    // Create BACKDROP to block settings window
+    // Settings has Z-Index ~20M (from CSS observation or assumption). 
+    // We'll use 21M to be safe.
+    const backdropCtx = createEl('div', null, {
+        id: 'sp-theme-editor-backdrop',
+        style: 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.4); z-index: 21000000; display: flex; align-items: flex-start; justify-content: flex-start;'
+    });
+
+    editorRoot = createEl('div', null, {
+        id: 'sp-theme-editor-root',
+        style: `
+            position: absolute; top: 100px; left: 100px; width: 320px;
+            background: rgba(15, 23, 42, 0.95); color: #fff;
+            border: 1px solid #334155; border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            font-family: 'Segoe UI', sans-serif;
+            backdrop-filter: blur(10px); display: flex; flex-direction: column;
+            overflow: hidden; animation: sp-fade-in 0.2s ease-out;
+        `
+    });
+
+    // Close Function
+    const closeEditor = () => backdropCtx.remove();
+
+    // Header
+    const header = createEl('div', null, {
+        id: 'sp-theme-drag-handle',
+        style: 'padding: 15px; background: rgba(30, 41, 59, 0.8); border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; cursor: grab;'
+    });
+    header.innerHTML = '<span style="font-weight: 600; font-size: 14px;">Theme Editor</span>';
+    const closeBtn = createEl('button', 'sp-settings-close', {
+        style: 'background: none; border: none; color: #94a3b8; font-size: 16px; cursor: pointer;'
+    });
+    closeBtn.innerText = '✕';
+    
+    closeBtn.onclick = closeEditor;
+    header.appendChild(closeBtn);
+    editorRoot.appendChild(header);
+
+    // Color Rows
+    const body = createEl('div', null, { style: 'padding: 15px; display: flex; flex-direction: column; gap: 12px;' });
+    
+    // Live Preview Helper
+    const applyPreview = (key, hex) => {
+        document.body.style.setProperty(`--sp-forum-${key.replace('_','-')}`, hex);
+        document.documentElement.setAttribute('data-sp-theme', 'custom');
+    };
+
+    // UI Mappings
+    const mappings = [
+        { label: "Background", key: "bg", val: startColors.bg },
+        { label: "Text Color", key: "text", val: startColors.text },
+        { label: "Link Color", key: "link", val: startColors.link },
+        { label: "Category BG", key: "cat_bg", val: startColors.cat_bg },
+        { label: "Category Text", key: "cat_text", val: startColors.cat_text },
+        { label: "Title BG", key: "title_bg", val: startColors.title_bg },
+        { label: "Window BG", key: "window_bg", val: startColors.window_bg }
+    ];
+
+    mappings.forEach(m => {
+        const row = createEl('div', null, { style: 'display: flex; align-items: center; justify-content: space-between;' });
+        
+        const label = createEl('span', null, { style: 'font-size: 13px; color: #cbd5e1;' });
+        label.innerText = m.label;
+        
+        const inputContainer = createEl('div', null, { style: 'display: flex; align-items: center; gap: 8px;' });
+        const textDisplay = createEl('span', null, { 
+            id: `txt_${m.key}`,
+            style: 'font-family: monospace; font-size: 12px; color: #64748b;' 
+        });
+        textDisplay.innerText = m.val;
+
+        const picker = createEl('input', null, { 
+            id: `col_${m.key}`,
+            type: 'color', 
+            value: m.val,
+            style: 'width: 32px; height: 32px; border: none; padding: 0; background: none; cursor: pointer;' 
+        });
+
+        picker.addEventListener('input', (e) => {
+            const hex = e.target.value;
+            textDisplay.innerText = hex;
+            applyPreview(m.key, hex);
+        });
+
+        inputContainer.append(textDisplay, picker);
+        row.append(label, inputContainer);
+        body.appendChild(row);
+    });
+    editorRoot.appendChild(body);
+
+    // Actions
+    const footer = createEl('div', null, { style: 'padding: 15px; border-top: 1px solid #334155; display: flex; gap: 10px; justify-content: flex-end;' });
+    
+    // SAVE BUTTON
+    const saveBtn = createEl('button', null, {
+        id: 'sp-theme-save',
+        style: 'padding: 8px 12px; background: transparent; color: var(--sp-accent); border: 1px solid var(--sp-accent); border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;'
+    });
+    saveBtn.innerText = 'SAVE';
+    
+    saveBtn.addEventListener('click', () => {
+        const newTheme = {};
+        mappings.forEach(m => {
+            const picker = editorRoot.querySelector(`#col_${m.key}`);
+            newTheme[m.key] = picker ? picker.value : m.val;
+        });
+        
+        chrome.storage.local.set({ 
+            sp_custom_theme: newTheme,
+            sp_theme: 'custom'
+        }, () => {
+             document.documentElement.setAttribute('data-sp-theme', 'custom');
+             localStorage.setItem('sp_theme_sync', 'custom'); // Sync to boot
+             
+             // SYNC SETTINGS DROPDOWN
+             const settingsDrop = document.getElementById('sp-theme-select');
+             if(settingsDrop) settingsDrop.value = 'custom';
+             
+             const oldText = saveBtn.innerText;
+             saveBtn.innerText = "SAVED!";
+             setTimeout(() => saveBtn.innerText = oldText, 800);
+        });
+    });
+
+    // RESET BUTTON
+    const resetBtn = createEl('button', null, {
+        id: 'sp-theme-reset',
+        style: 'padding: 8px 12px; background: transparent; color: #94a3b8; border: 1px solid #475569; border-radius: 6px; cursor: pointer; font-size: 12px;'
+    });
+    resetBtn.innerText = 'RESET';
+    
+    resetBtn.onclick = () => {
+        if(confirm("Discard all custom theme changes and revert to standard Light/Dark themes?")) {
+            chrome.storage.local.remove(['sp_custom_theme']);
+            const themeSel = document.getElementById('sp-theme-select');
+            
+            // If currently custom, default to light. If already light/dark, keep it?
+            // Actually, if we reset, we probably want to go to the "base" of whatever was selected 
+            // OR just default to Light. 
+            // User logic: "Revert to standard Light/Dark".
+            // Let's default to Light if we can't determine.
+            const originalTheme = (themeSel && themeSel.value !== 'custom') ? themeSel.value : 'light';
+            
+            chrome.storage.local.set({ sp_theme: originalTheme });
+            document.documentElement.setAttribute('data-sp-theme', originalTheme);
+            document.body.style = ""; // Clear overrides
+            localStorage.setItem('sp_theme_sync', originalTheme);
+            
+            // SYNC DROPDOWN
+            if(themeSel) themeSel.value = originalTheme;
+            
+            closeEditor();
+        }
+    };
+    
+    footer.append(saveBtn, resetBtn);
+    editorRoot.appendChild(footer);
+    backdropCtx.appendChild(editorRoot);
+
+    document.body.appendChild(backdropCtx);
+
+    // --- Drag Logic (Updated for Absolute Positioning) ---
+    let isDragging = false;
+    let startX, startY, initialLeft, initialTop;
+    
+    header.addEventListener('mousedown', (e) => {
+        if(e.target.closest('.sp-settings-close')) return;
+        isDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        const rect = editorRoot.getBoundingClientRect();
+        // Since editorRoot is absolute inside backdrop, left/top should be relative to viewport (since backdrop is fixed 0,0)
+        // correct.
+        initialLeft = rect.left;
+        initialTop = rect.top;
+        
+        header.style.cursor = 'grabbing';
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        e.preventDefault();
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        
+        editorRoot.style.left = (initialLeft + dx) + 'px';
+        editorRoot.style.top = (initialTop + dy) + 'px';
+    });
+
+    window.addEventListener('mouseup', () => {
+        if(isDragging) {
+            isDragging = false;
+            header.style.cursor = 'grab';
+        }
+    });
 }

@@ -30,11 +30,64 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             method: 'POST',
             body: params
         })
-        .then(response => {
-             // We don't strictly need the response JSON for pulse, just success/fail
-             return response.text(); 
+        .then(response => response.text()) // Read as text first to handle non-JSON
+        .then(text => {
+            try {
+                const data = JSON.parse(text);
+                
+                // CASE 1: Standard JSON Success Object (PHP uses 'status': 'success')
+                if (data && typeof data === 'object') {
+                    if (data.status === 'success' || data.success === true) {
+                        sendResponse({ success: true, data: data });
+                        return;
+                    }
+                }
+
+                // CASE 2: Explicit Failure
+                if (data && typeof data === 'object') {
+                    if (data.status === 'error' || data.success === false || data.error) {
+                        sendResponse({ success: false, error: data.message || data.error || "Backend rejected" });
+                        return;
+                    }
+                }
+
+                // CASE 3: Numeric Response (Legacy "New Count" return)
+                if (typeof data === 'number') {
+                     sendResponse({ success: true, data: data });
+                     return;
+                }
+
+                // CASE 4: String Response (Legacy "OK") treated as JSON string
+                if (typeof data === 'string') {
+                    const lower = data.toLowerCase();
+                    if (lower.includes('error') || lower.includes('duplicate') || lower.includes('fail')) {
+                         sendResponse({ success: false, error: data });
+                    } else {
+                         sendResponse({ success: true, data: data });
+                    }
+                    return;
+                }
+
+                // Fallback: If it's an object but has no 'success' key, assume it's data payload
+                if (data && typeof data === 'object') {
+                    sendResponse({ success: true, data: data });
+                } else {
+                    // Unknown JSON structure -> Fail safe? Or assume success?
+                    // Let's safe-fail only on explicit error signals.
+                    sendResponse({ success: true, data: data }); 
+                }
+            } catch (e) {
+                // Not JSON - Legacy Text Response?
+                // If text seems like a PHP Error or "Duplicate", treat as fail.
+                const lower = text.toLowerCase();
+                if (lower.includes('error') || lower.includes('duplicate') || lower.includes('fail')) {
+                    sendResponse({ success: false, error: text });
+                } else {
+                    // Assume success if it's just "1", "OK", or empty (legacy)
+                    sendResponse({ success: true, data: text });
+                }
+            }
         })
-        .then(text => sendResponse({ success: true, data: text }))
         .catch(error => sendResponse({ success: false, error: error.message }));
 
         return true;

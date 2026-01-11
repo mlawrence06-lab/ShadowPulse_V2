@@ -23,9 +23,27 @@ function init() {
     spLog("Initializing ShadowPulse...");
 
     // 0. Load Settings Cache
-    chrome.storage.local.get(['sp_show_pulse', 'sp_flash_logo'], (res) => {
+    // 0. Load Settings Cache
+    chrome.storage.local.get(['sp_show_pulse', 'sp_flash_logo', 'sp_theme', 'sp_custom_theme'], (res) => {
         if (res.sp_show_pulse !== undefined) SETTINGS.sp_show_pulse = res.sp_show_pulse;
         if (res.sp_flash_logo !== undefined) SETTINGS.sp_flash_logo = res.sp_flash_logo;
+        
+        // Theme Loader
+        const theme = res.sp_theme || 'light';
+        
+        if (theme === 'custom' && res.sp_custom_theme) {
+             // Apply Custom CSS Variables
+             const t = res.sp_custom_theme;
+             Object.keys(t).forEach(key => {
+                 const varName = key.startsWith('--') ? key : `--sp-forum-${key.replace('_','-')}`;
+                 document.body.style.setProperty(varName, t[key]);
+             });
+             document.documentElement.setAttribute('data-sp-theme', 'custom');
+             localStorage.setItem('sp_theme_sync', 'custom'); // Sync for boot
+        } else {
+             document.documentElement.setAttribute('data-sp-theme', theme);
+             localStorage.setItem('sp_theme_sync', theme); // Sync for boot
+        }
         
         // 1. Initialize User ID
         initUserId().then(() => {
@@ -40,6 +58,9 @@ function init() {
             const boardMatch = window.location.href.match(/board=(\d+)/);
 
             if (topicMatch) {
+                // Fix: Ignore "Edit", "Post", "Print" pages to prevent Title Corruption
+                if (window.location.href.includes('action=')) return;
+
                 const tId = topicMatch[1];
                 const meta = getTopicMetadata(); // Scrape Board/Topic info
                 
@@ -160,6 +181,9 @@ function getTopicMetadata() {
 
 function startPulsePolling() {
     setInterval(async () => {
+        // Optimization: Pause when tab is hidden
+        if (document.hidden) return;
+
         // A. Global Pulse Check (Logo Flash)
         if (SETTINGS.sp_flash_logo) {
              try {
@@ -340,7 +364,9 @@ function injectPulseButtons() {
 }
 
 function createPulseButton(topicId, msgId, meta) {
-    const btnPulse = createEl("button", ["sp-pulse-btn"]);
+    // START: Convert to Anchor to match +Merit
+    const btnPulse = createEl("a", ["sp-pulse-btn"]); // Changed to 'a'
+    btnPulse.href = "#"; 
     btnPulse.textContent = "+Pulse";
     btnPulse.title = `Give Pulse as ${userPublicId}`;
     
@@ -348,8 +374,8 @@ function createPulseButton(topicId, msgId, meta) {
     btnPulse.dataset.topicId = topicId;
     btnPulse.dataset.msgId = msgId;
     
-    btnPulse.style.display = "inline-block";
-    btnPulse.style.lineHeight = "1.2"; 
+    // Styles handled by CSS class now (inherits from a)
+    // END: Convert -> Anchor 
     
     // Logic
     btnPulse.addEventListener("click", async (e) => {
@@ -388,10 +414,20 @@ function createPulseButton(topicId, msgId, meta) {
             if (response && response.success) {
                 spLog("Pulse Sent (BG Success)");
             } else {
-                console.error("Pulse BG Fail:", response?.error);
+                console.warn("Pulse Rejected/Failed. Triggering Red Flash.");
+                // REJECTED / ERROR: Flash Red
+                btnPulse.classList.remove('sp-flash');
+                void btnPulse.offsetWidth; // Trigger reflow
+                btnPulse.classList.add('sp-flash-error');
+                setTimeout(() => btnPulse.classList.remove('sp-flash-error'), 1000);
             }
         } catch (err) {
             console.error("Pulse Message Error:", err);
+            // Network/Runtime Error: Flash Red
+            btnPulse.classList.remove('sp-flash');
+            void btnPulse.offsetWidth;
+            btnPulse.classList.add('sp-flash-error');
+            setTimeout(() => btnPulse.classList.remove('sp-flash-error'), 1000);
         }
     });
 

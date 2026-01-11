@@ -14,14 +14,169 @@
 
 /* Dark Mode Injection (Applied via attribute) */
 [data-sp-theme="dark"] {
-  --sp-bg: #0b1220;
-  --sp-bg-elevated: #0f172a;
-  --sp-border: rgba(148, 163, 184, 0.5);
-  --sp-text: #e5e7eb;
-  --sp-text-soft: #94a3b8;
-  --sp-accent: #1e90ff;
-  --sp-accent-soft: rgba(30, 144, 255, 0.18);
+  --sp-bg: #0f172a;           /* Slate 900 */
+  --sp-bg-elevated: #1e293b;  /* Slate 800 */
+  --sp-border: #334155;       /* Slate 700 */
+  --sp-text: #f1f5f9;         /* Slate 100 */
+  --sp-text-soft: #94a3b8;    /* Slate 400 */
+  --sp-accent: #38bdf8;       /* Sky 400 */
+  --sp-accent-soft: rgba(56, 189, 248, 0.15);
+
+  /* Forum Overrides for Standard Dark Mode */
+  --sp-forum-bg: #0f172a;
+  --sp-forum-text: #cbd5e1;
+  --sp-forum-link: #60a5fa;
+  --sp-forum-cat-bg: #1e293b;
+  --sp-forum-cat-text: #f8fafc;
+  --sp-forum-title-bg: #334155;
+  --sp-forum-window-bg: #1e293b;
+  --sp-forum-window-bg2: #182234; /* Slightly Darker */
+  --sp-forum-border: #475569;
+  --sp-forum-quote-bg: #020617;
+  --sp-forum-input-bg: #1e293b;
+  /* Scrollbar */
+  color-scheme: dark;
 }
+
+[data-sp-theme="dark"] ::-webkit-scrollbar { width: 12px; }
+[data-sp-theme="dark"] ::-webkit-scrollbar-track { background: var(--sp-forum-bg); }
+[data-sp-theme="dark"] ::-webkit-scrollbar-thumb { 
+    background-color: var(--sp-forum-border); 
+    border-radius: 6px; 
+    border: 3px solid var(--sp-forum-bg); 
+}
+
+/* Ensure these standard dark variables are applied when data-sp-theme="dark" is present on body */
+html[data-sp-theme="dark"],
+[data-sp-theme="dark"] body {
+    background-color: var(--sp-forum-bg) !important;
+    color: var(--sp-forum-text) !important;
+    min-height: 100vh;
+}
+[data-sp-theme="dark"] a:link, [data-sp-theme="dark"] a:visited { color: var(--sp-forum-link) !important; }
+[data-sp-theme="dark"] .windowbg { background-color: var(--sp-forum-window-bg) !important; color: var(--sp-forum-text) !important;}
+[data-sp-theme="dark"] .windowbg2 { background-color: var(--sp-forum-window-bg2, #182234) !important; color: var(--sp-forum-text) !important;}
+[data-sp-theme="dark"] .windowbg3 { background-color: var(--sp-forum-window-bg) !important; color: var(--sp-forum-text) !important;}
+[data-sp-theme="dark"] .catbg, [data-sp-theme="dark"] .catbg2, [data-sp-theme="dark"] tr.catbg td, [data-sp-theme="dark"] tr.catbg2 td {
+    background-color: var(--sp-forum-cat-bg) !important; color: var(--sp-forum-cat-text) !important; background-image: none !important;
+}
+[data-sp-theme="dark"] .titlebg, [data-sp-theme="dark"] .titlebg2, [data-sp-theme="dark"] tr.titlebg td, [data-sp-theme="dark"] tr.titlebg2 td {
+    background-color: var(--sp-forum-title-bg) !important; color: var(--sp-forum-text) !important; background-image: none !important;
+}
+[data-sp-theme="dark"] .bordercolor { background-color: var(--sp-forum-border) !important; }
+[data-sp-theme="dark"] .tborder { background-color: var(--sp-forum-border) !important; border: 1px solid var(--sp-forum-border) !important; }
+[data-sp-theme="dark"] .quote {
+    background-color: var(--sp-forum-quote-bg) !important; border: 1px solid var(--sp-forum-border) !important; color: var(--sp-forum-text) !important;
+}
+[data-sp-theme="dark"] .quote {
+    background-color: var(--sp-forum-quote-bg) !important; border: 1px solid var(--sp-forum-border) !important; color: var(--sp-forum-text) !important;
+}
+/* Target ALL inputs/buttons (excluding checkbox/radio which are native) */
+[data-sp-theme="dark"] textarea, 
+[data-sp-theme="dark"] select,
+[data-sp-theme="dark"] button,
+[data-sp-theme="dark"] input:not([type="checkbox"]):not([type="radio"]) {
+    background-color: var(--sp-forum-input-bg) !important; 
+    color: var(--sp-forum-text) !important; 
+    border: 1px solid var(--sp-forum-border) !important;
+}
+
+/* Post Content & Utility Text Fix */
+[data-sp-theme="dark"] .post, 
+[data-sp-theme="dark"] .inner, 
+[data-sp-theme="dark"] .keyinfo,
+[data-sp-theme="dark"] .smalltext,
+[data-sp-theme="dark"] .middletext,
+[data-sp-theme="dark"] .nav,
+[data-sp-theme="dark"] td {
+    color: var(--sp-forum-text) !important;
+}
+
+/* Navigation & Menu Fixes */
+[data-sp-theme="dark"] .maintab_back, [data-sp-theme="dark"] .maintab_first, [data-sp-theme="dark"] .maintab_last, 
+[data-sp-theme="dark"] .maintab_active_back, [data-sp-theme="dark"] .maintab_active_first, [data-sp-theme="dark"] .maintab_active_last,
+[data-sp-theme="dark"] .mirrortab_back, [data-sp-theme="dark"] .mirrortab_first, [data-sp-theme="dark"] .mirrortab_last, 
+[data-sp-theme="dark"] .mirrortab_active_back, [data-sp-theme="dark"] .mirrortab_active_first, [data-sp-theme="dark"] .mirrortab_active_last {
+    background-color: var(--sp-forum-cat-bg) !important;
+    background-image: none !important;
+    color: var(--sp-forum-cat-text) !important;
+}
+
+/* === CUSTOM THEME ENGINE (Overrides SMF) === */
+html[data-sp-theme="custom"],
+[data-sp-theme="custom"] body {
+  /* Extension UI Variables Mapped to Custom Theme */
+  --sp-bg: var(--sp-forum-bg, #ffffff);
+  --sp-bg-elevated: var(--sp-forum-window-bg, #f0f0f0); /* Settings Window BG */
+  --sp-border: var(--sp-forum-border, #cccccc);
+  --sp-text: var(--sp-forum-text, #000000);
+  --sp-text-soft: var(--sp-forum-cat-text, #444444); /* Use Cat Text for soft contrast? Or just Text */
+  --sp-accent: var(--sp-forum-link, #1e90ff);
+  
+  background-color: var(--sp-forum-bg, #ffffff) !important;
+  color: var(--sp-forum-text, #000000) !important;
+  min-height: 100vh;
+}
+[data-sp-theme="custom"] a:link,
+[data-sp-theme="custom"] a:visited {
+  color: var(--sp-forum-link, #0000ff) !important;
+}
+
+/* Post Content & Utility Text Fix - Custom */
+[data-sp-theme="custom"] .post, 
+[data-sp-theme="custom"] .inner, 
+[data-sp-theme="custom"] .keyinfo,
+[data-sp-theme="custom"] .smalltext,
+[data-sp-theme="custom"] .middletext,
+[data-sp-theme="custom"] .nav,
+[data-sp-theme="custom"] td {
+    color: var(--sp-forum-text, #000000) !important;
+}
+
+[data-sp-theme="custom"] .windowbg,
+[data-sp-theme="custom"] .windowbg2,
+[data-sp-theme="custom"] .windowbg3 {
+  background-color: var(--sp-forum-window-bg, #f0f0f0) !important;
+  color: var(--sp-forum-text, #000000) !important;
+}
+[data-sp-theme="custom"] .catbg,
+[data-sp-theme="custom"] .catbg2,
+[data-sp-theme="custom"] tr.catbg td,
+[data-sp-theme="custom"] tr.catbg2 td {
+  background-color: var(--sp-forum-cat-bg, #6699cc) !important;
+  color: var(--sp-forum-cat-text, #ffffff) !important;
+  background-image: none !important;
+}
+[data-sp-theme="custom"] .titlebg,
+[data-sp-theme="custom"] .titlebg2,
+[data-sp-theme="custom"] tr.titlebg td,
+[data-sp-theme="custom"] tr.titlebg2 td {
+  background-color: var(--sp-forum-title-bg, #dce4e9) !important;
+  color: var(--sp-forum-text, #000000) !important;
+  background-image: none !important;
+}
+[data-sp-theme="custom"] .bordercolor {
+  background-color: var(--sp-forum-border, #000000) !important;
+}
+[data-sp-theme="custom"] .tborder {
+  background-color: var(--sp-forum-border, #000000) !important;
+  border: 1px solid var(--sp-forum-border, #000000) !important;
+}
+[data-sp-theme="custom"] .quote {
+  background-color: var(--sp-forum-quote-bg, #e7e7e7) !important;
+  border: 1px solid var(--sp-forum-border, #000000) !important;
+  color: var(--sp-forum-text, #000000) !important;
+}
+[data-sp-theme="custom"] textarea,
+[data-sp-theme="custom"] input[type="text"],
+[data-sp-theme="custom"] select {
+  /* Fallback to window-bg if input-bg is missing, then white */
+  background-color: var(--sp-forum-input-bg, var(--sp-forum-window-bg, #ffffff)) !important;
+  color: var(--sp-forum-text, #000000) !important;
+  border: 1px solid var(--sp-forum-border, #888) !important;
+}
+
+
 
 /* --- 2. FLOATING BAR (V1 Toolbar Reduced) --- */
 .sp-floating-bar {
@@ -154,16 +309,19 @@
 
 /* --- 3. PULSE BUTTONS --- */
 /* Injected into Bitcointalk Posts */
+/* Pulse Button (Anchor Style) */
 .sp-pulse-btn {
+  /* Inherit standard link behavior from Forum */
+  /* Remove overrides so it looks like +Merit */
   display: inline-block;
-  color: #1e90ff; /* Match Link Color usually or Accent */
+  color: #1e90ff; /* Keep blue to match Merit */
   cursor: pointer;
   font-size: 11px;
-  font-weight: 700; /* BOLD */
-  font-family: Verdana, Arial, sans-serif;
+  font-weight: bold; /* Merit is Bold */
+  font-family: inherit;
   text-decoration: none;
   margin-left: 0px;
-  background: none;
+  background: transparent;
   border: none;
   padding: 0;
 }
@@ -173,12 +331,32 @@
 
 /* Flash Animation (Updated for SVG) */
 @keyframes spFlashAnim {
-    0% { transform: scale(1); filter: none; }
-    50% { transform: scale(1.15); filter: drop-shadow(0 0 10px #ff00ff) hue-rotate(280deg); }
-    100% { transform: scale(1); filter: none; }
+  0% {
+    transform: scale(1);
+    filter: none;
+  }
+  50% {
+    transform: scale(1.15);
+    filter: drop-shadow(0 0 10px #ff00ff) hue-rotate(280deg);
+  }
+  100% {
+    transform: scale(1);
+    filter: none;
+  }
 }
 .sp-flash {
-    animation: spFlashAnim 0.6s ease-out;
+  animation: spFlashAnim 0.6s ease-out;
+}
+
+/* Error Flash (Red Shake) */
+@keyframes spFlashErrorAnim {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
+}
+.sp-flash-error {
+  color: #ef4444 !important; /* Force Red override */
+  animation: spFlashErrorAnim 0.25s ease-in-out 4; /* 4 shakes = 1s */
 }
 
 @keyframes spFlash10s {
@@ -289,9 +467,9 @@
 }
 .sp-settings-row input[type="text"],
 .sp-settings-row select {
-  background: var(--sp-bg);
-  border: 1px solid var(--sp-border);
-  color: var(--sp-text);
+  background: var(--sp-bg) !important;
+  border: 1px solid var(--sp-border) !important;
+  color: var(--sp-text) !important;
   border-radius: 4px;
   padding: 2px 6px;
   font-size: 12px;

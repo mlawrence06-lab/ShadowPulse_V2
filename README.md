@@ -2,6 +2,10 @@
 
 ShadowPulse is a browser extension for BitcoinTalk.org that provides real-time "Pulse" tracking and reputation visualization.
 
+## Performance: Zero Background Usage
+
+**Active Tab Isolation:** ShadowPulse is strictly confined to your open Bitcointalk tabs. It performs a lightweight pulse check (every 2s) _only_ while you are actively viewing the forum. The moment you switch tabs or minimize the window, all extension activity pauses immediately—guaranteeing zero background resource usage.
+
 ## Installation
 
 1.  **Download** the repository:
