@@ -688,6 +688,8 @@ export function injectFloatingBar() {
         // Handle "Click" on Logo here if it wasn't a move
         // Touch events might not fire 'click' reliably if we preventDefaulted move
         if (!hasMoved && e.target.closest('#sp-logo-zone')) {
+             // Stop Ghost Clicks (Touch + Mouse)
+             if (e.type === 'touchend') e.preventDefault();
              openSettingsModal();
         }
     };
