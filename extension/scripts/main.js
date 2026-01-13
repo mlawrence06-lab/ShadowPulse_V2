@@ -35,7 +35,6 @@ function init() {
     spLog("Initializing ShadowPulse...");
 
     // 0. Load Settings Cache
-    // 0. Load Settings Cache
     chrome.storage.local.get([
         'sp_show_pulse', 'sp_flash_logo', 
         'sp_theme', 
@@ -51,8 +50,6 @@ function init() {
         // MIGRATION: If legacy 'custom', move to 'dark' profile (assumption)
         if (theme === 'custom') {
             theme = 'dark';
-            // If we have legacy vars but no new vars, migrate them in memory (save later?)
-            // For now, let's just use the legacy vars if sp_custom_dark is missing.
             if (!res.sp_custom_dark && res.sp_custom_theme) {
                 res.sp_custom_dark = res.sp_custom_theme;
             }
@@ -88,16 +85,15 @@ function init() {
             injectSearchTable();
             
             // 2b. Track View
-            // 2b. Track View
             const topicMatch = window.location.href.match(/topic=(\d+)/);
             const boardMatch = window.location.href.match(/board=(\d+)/);
 
             if (topicMatch) {
-                // Fix: Ignore "Edit", "Post", "Print" pages to prevent Title Corruption
+                // Ignore "Edit", "Post", "Print" pages
                 if (window.location.href.includes('action=')) return;
 
                 const tId = topicMatch[1];
-                const meta = getTopicMetadata(); // Scrape Board/Topic info
+                const meta = getPageData(); 
                 
                 chrome.runtime.sendMessage({
                     type: "TRACK_VIEW",
@@ -105,15 +101,14 @@ function init() {
                         topic_id: tId,
                         voter_id: userPublicId,
                         uuid: userUuid,
-                        board_id: meta.boardId,
-                        topic_title: meta.topicTitle
+                        board_id: meta.boardId, // Data Point: Board ID from Breadcrumbs
+                        topic_title: meta.topicTitle // Data Point: Topic Title from Breadcrumbs
                     }
                 });
             } else if (boardMatch) {
                // Track Board Index View
                const bId = boardMatch[1];
-               // Scrape Title (Board Name)
-               // Title usually: "Board Name - Bitcoin Forum"
+               // Data Point: Board Title
                let bTitle = document.title.replace(" - Bitcoin Forum", "").trim();
 
                chrome.runtime.sendMessage({
@@ -123,7 +118,7 @@ function init() {
                        voter_id: userPublicId,
                        uuid: userUuid,
                        is_board_view: true,
-                       board_title: bTitle
+                       board_title: bTitle // Data Point: Board Title from innerText
                    }
                });
             }
@@ -171,46 +166,50 @@ async function initUserId() {
     });
 }
 
-// --- Metadata Helper ---
-function getTopicMetadata() {
-    let boardId = '0';
-    let topicTitle = document.title; // Fallback
+// --- Metadata Helper (Unified One-Pass) ---
+function getPageData() {
+    const meta = {
+        type: null,
+        boardId: '0',
+        boardTitle: "",
+        topicId: '0',
+        topicTitle: "" 
+    };
 
-    // Strategy 1: <link rel="index"> (Most Reliable on Topics)
-    const indexLink = document.querySelector('link[rel="index"]');
-    if (indexLink && indexLink.href) {
-        const match = indexLink.href.match(/board=(\d+)/);
-        if (match) boardId = match[1];
-    }
+    // Strategy: Walk Breadcrumbs (Navigation Tree)
+    // We iterate through all links. 
+    // - If it has board=ID, we capture ID and Title (overwriting previous parents).
+    // - If it has topic=ID, we capture ID and Title and mark as 'topic'.
+    const navLinks = document.querySelectorAll('.navigate_section a');
+    
+    for (const link of navLinks) {
+        const href = link.href;
+        const text = link.textContent.trim();
 
-    // Strategy 2: Breadcrumbs (Fallback)
-    if (boardId === '0') {
-        const navLinks = document.querySelectorAll('.navigate_section a');
-        for (const link of navLinks) {
-            const match = link.href.match(/board=(\d+)/);
-            if (match) {
-                boardId = match[1];
-                // Keep iterating to get the most specific (last) board
-            }
+        // Data Point: Board ID and Name
+        const bMatch = href.match(/board=(\d+)/);
+        if (bMatch) {
+            meta.boardId = bMatch[1];
+            meta.boardTitle = text;
+        }
+
+        // Data Point: Topic ID and Name
+        const tMatch = href.match(/topic=(\d+)/);
+        if (tMatch) {
+            meta.topicId = tMatch[1];
+            meta.topicTitle = text;
+            meta.type = 'topic';
         }
     }
 
-    // Strategy 3: Mirror Link (Last Resort)
-    if (boardId === '0') {
-         const mirrors = document.querySelectorAll('.mirrors a');
-         for (const link of mirrors) {
-             const match = link.href.match(/board=(\d+)/);
-             if (match) {
-                 boardId = match[1];
-                 break;
-             }
-         }
+    // Deduce Type if topic found
+    if (meta.topicId !== '0') {
+        meta.type = 'topic';
+    } else if (meta.boardId !== '0') {
+        meta.type = 'board';
     }
 
-    // Refine Topic Title
-    topicTitle = topicTitle.replace(/ - Page \d+/, "").replace(/ - Bitcoin Forum$/, "").trim();
-
-    return { boardId, topicTitle };
+    return meta;
 }
 
 
@@ -310,9 +309,9 @@ function injectPulseButtons() {
     if (SETTINGS.sp_show_pulse === false) return; 
 
     const posts = document.querySelectorAll('td.td_headerandpost');
-    const pageTopicMatch = window.location.href.match(/topic=(\d+)\./);
-    const pageTopicId = pageTopicMatch ? pageTopicMatch[1] : '0';
-    const pageMeta = getTopicMetadata(); // Get Page-Level Topic/Board
+    // We already scraped this in init check, but for safety inside this standalone function:
+    const pageMeta = getPageData(); 
+    const pageTopicId = pageMeta.topicId;
 
     posts.forEach(td => {
         if (td.dataset.spInjected) return;
@@ -335,19 +334,18 @@ function injectPulseButtons() {
         const topicMatch = href.match(/topic=(\d+)/);
         if (topicMatch) topicId = topicMatch[1];
 
+        // Data Point: Message ID
         const msgMatch = href.match(/msg(\d+)/) || href.match(/#msg(\d+)/);
         if (msgMatch) msgId = msgMatch[1];
         
-        // --- Scrape Post Metadata ---
         let postTitle = "";
         let postAuthor = "Unknown";
         let postAuthorUid = 0;
 
-        // Author: Look at previous TD (td.poster_info)
+        // Data Point: Post Author
         const tr = td.parentElement;
         const posterTd = tr.querySelector('td.poster_info');
         if (posterTd) {
-            // Usually the first <b><a>Name</a></b> or similar
             const nameLink = posterTd.querySelector('a'); 
             if (nameLink) {
                 postAuthor = nameLink.textContent.trim();
@@ -356,14 +354,11 @@ function injectPulseButtons() {
             }
         }
 
-        // Title: Look for div[id^="subject_"] inside this TD
+        // Data Point: Post Subject
         const subjectDiv = td.querySelector('div[id^="subject_"]');
         if (subjectDiv) {
             const subjectLink = subjectDiv.querySelector('a');
             if (subjectLink) postTitle = subjectLink.textContent.trim();
-        } else {
-             // Fallback: Check if it's the first post? Sometimes different structure.
-             // Or rely on page title if empty? No, cleaner to fail to ""
         }
 
         // Find Merit
@@ -399,8 +394,7 @@ function injectPulseButtons() {
 }
 
 function createPulseButton(topicId, msgId, meta) {
-    // START: Convert to Anchor to match +Merit
-    const btnPulse = createEl("a", ["sp-pulse-btn"]); // Changed to 'a'
+    const btnPulse = createEl("a", ["sp-pulse-btn"]); 
     btnPulse.href = "#"; 
     btnPulse.textContent = "+Pulse";
     btnPulse.title = `Give Pulse as ${userPublicId}`;
@@ -418,7 +412,6 @@ function createPulseButton(topicId, msgId, meta) {
         e.stopPropagation();
         
         // 1. Visual Immediate Feedback (Sync)
-        // 1. Visual Immediate Feedback (Sync)
         // Flash ONLY this button, not global logo
         btnPulse.classList.add('sp-flash');
         setTimeout(() => btnPulse.classList.remove('sp-flash'), 1000); 
@@ -429,8 +422,8 @@ function createPulseButton(topicId, msgId, meta) {
         try {
             const payload = {
                 voter_id: userPublicId,
-                uuid: userUuid, // Added for verification
-                msg_id: msgId,  // Changed from target_id to msg_id
+                uuid: userUuid, 
+                msg_id: msgId,  
                 topic_id: topicId,
                 type: 'pulse',
                 // Metadata
@@ -449,15 +442,14 @@ function createPulseButton(topicId, msgId, meta) {
             if (response && response.success) {
                 spLog("Pulse Sent (BG Success)");
             } else {
-                // REJECTED / ERROR: Flash Red
+                // Error Feedback
                 btnPulse.classList.remove('sp-flash');
-                void btnPulse.offsetWidth; // Trigger reflow
+                void btnPulse.offsetWidth; 
                 btnPulse.classList.add('sp-flash-error');
                 setTimeout(() => btnPulse.classList.remove('sp-flash-error'), 1000);
             }
         } catch (err) {
             console.error("Pulse Message Error:", err);
-            // Network/Runtime Error: Flash Red
             btnPulse.classList.remove('sp-flash');
             void btnPulse.offsetWidth;
             btnPulse.classList.add('sp-flash-error');
