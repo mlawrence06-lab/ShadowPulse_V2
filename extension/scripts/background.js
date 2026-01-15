@@ -64,8 +64,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
 
     if (request.type === "GET_VOTE_STATUS") {
-         const { msg_id } = request.payload;
-         fetch(`${CONFIG.API_BASE_URL}/get_vote_status.php?msg_id=${msg_id}`)
+         const { msg_id, msg_ids } = request.payload;
+         let url = `${CONFIG.API_BASE_URL}/get_vote_status.php`;
+         
+         if (msg_ids) {
+             url += `?msg_ids=${msg_ids}`;
+         } else if (msg_id) {
+             url += `?msg_id=${msg_id}`;
+         }
+         
+         fetch(url)
             .then(res => res.json())
             .then(data => sendResponse({ success: true, data: data }))
             .catch(err => sendResponse({ success: false, error: err.message }));

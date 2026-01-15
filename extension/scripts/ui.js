@@ -1,6 +1,60 @@
 import { createEl, spLog } from "./utils.js";
 import { CONFIG } from "./config.js";
 
+// --- Logo States (Pixel Perfect Strings) ---
+const SP_LOGO_SVG = `
+<svg viewBox="0 0 100 100" class="sp-std-logo">
+    <defs>
+        <linearGradient id="sp_logo_grad_float" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#1e40af;stop-opacity:1" />
+        </linearGradient>
+    </defs>
+    <circle cx="50" cy="50" r="48" fill="url(#sp_logo_grad_float)" />
+    <text x="50" y="66" font-family="Arial, sans-serif" font-weight="800" font-size="42" text-anchor="middle" fill="white" style="pointer-events:none;">SP</text>
+</svg>`;
+
+const BTC_LOGO_SVG = `
+<svg viewBox="0 0 100 100" class="sp-std-logo">
+    <defs>
+        <linearGradient id="sp_logo_grad_btc" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#1e40af;stop-opacity:1" />
+        </linearGradient>
+    </defs>
+    <circle cx="50" cy="50" r="48" fill="url(#sp_logo_grad_btc)" />
+    <text x="50" y="70" font-family="sans-serif" font-weight="bold" font-size="56" text-anchor="middle" fill="#f7931a" style="pointer-events:none;">₿</text>
+</svg>`;
+
+let currentLogoState = 'SP';
+
+export function setLogoState(isBtc) {
+    const container = document.getElementById('sp-logo-container');
+    const newState = isBtc ? 'BTC' : 'SP';
+    
+    if (container && currentLogoState !== newState) {
+        currentLogoState = newState;
+        container.innerHTML = isBtc ? BTC_LOGO_SVG : SP_LOGO_SVG;
+        
+        // Update Title/Cursor behavior
+        const zone = document.getElementById('sp-logo-zone');
+        if (zone) {
+            zone.title = isBtc ? "Click to CLAIM BTC!" : "Open Settings";
+            zone.style.cursor = "pointer";
+            if (isBtc) {
+                zone.classList.add('sp-flash');
+            } else {
+                zone.classList.remove('sp-flash');
+                container.innerHTML = SP_LOGO_SVG; // Ensure reset
+            }
+        }
+    } else if (container && !isBtc && currentLogoState === 'BTC') {
+        // Fallback: If logic says NOT BTC but state thinks it is, force reset
+        currentLogoState = 'SP';
+        container.innerHTML = SP_LOGO_SVG;
+    }
+}
+
 export function openSettingsModal() {
     let backdrop = document.getElementById('sp-settings-root');
     if (backdrop) {
@@ -22,7 +76,6 @@ export function openSettingsModal() {
             <div class="sp-settings-header" id="sp-settings-drag-handle" style="cursor:move;">
                 <div class="sp-settings-header-logo" style="margin-right:12px;">
                     <!-- Inline SP Logo -->
-                    <!-- Standard SVG Logo (Pulse) -->
                     <svg width="48" height="48" viewBox="0 0 100 100" class="sp-logo-pulse">
                         <defs>
                             <linearGradient id="sp_logo_grad_set" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -55,7 +108,7 @@ export function openSettingsModal() {
                     </div>
                 </div>
 
-                <!-- Show Graph (New) -->
+                <!-- Show Graph -->
                 <div class="sp-settings-row">
                     <label>Show Graph</label>
                     <select id="sp-show-graph-select">
@@ -64,7 +117,7 @@ export function openSettingsModal() {
                     </select>
                 </div>
 
-                <!-- Bitcoin Source (Wrapped for toggling) -->
+                <!-- Bitcoin Source -->
                 <div class="sp-settings-row" id="sp-btc-row">
                     <label>Bitcoin Source</label>
                     <select id="sp-btc-select">
@@ -72,7 +125,7 @@ export function openSettingsModal() {
                     </select>
                 </div>
 
-                <!-- Show +Pulse (New) -->
+                <!-- Show +Pulse -->
                 <div class="sp-settings-row">
                     <label>Show +Pulse</label>
                     <select id="sp-show-pulse-select">
@@ -81,7 +134,7 @@ export function openSettingsModal() {
                     </select>
                 </div>
 
-                <!-- Flash Logo (New) -->
+                <!-- Flash Logo -->
                 <div class="sp-settings-row">
                     <label>Flash Logo</label>
                     <select id="sp-flash-logo-select">
@@ -137,7 +190,6 @@ export function openSettingsModal() {
                             </button>
                         </div>
                         <div class="sp-settings-input-group" style="margin-bottom:0;">
-                             <!-- Removed Bold -->
                              <div class="sp-settings-restore-code" id="sp-code-display" style="background:var(--sp-bg); border-color:var(--sp-accent); color:var(--sp-accent);">...</div>
                         </div>
                     </div>
@@ -159,7 +211,7 @@ export function openSettingsModal() {
                     <div class="sp-settings-row" style="margin-top:4px; display:flex;">
                         <span style="margin-right:4px;">Restore:</span>
                         <div class="sp-settings-input-group" style="margin:0; flex:1; display:flex;">
-                            <input type="text" id="sp-restore-input" placeholder="Paste code" style="flex:1; width:0;" /> <!-- width:0 force flex shrink -->
+                            <input type="text" id="sp-restore-input" placeholder="Paste code" style="flex:1; width:0;" /> 
                             <button id="sp-restore-btn" class="sp-text-btn">GO</button>
                         </div>
                     </div>
@@ -171,7 +223,7 @@ export function openSettingsModal() {
     document.body.appendChild(backdrop);
     setTimeout(() => backdrop.classList.add('sp-settings-open'), 10);
 
-    // --- Modal Drag Logic (Mouse & Touch) ---
+    // --- Modal Drag Logic ---
     const modal = backdrop.querySelector('#sp-settings-window');
     const handle = backdrop.querySelector('#sp-settings-drag-handle');
     
@@ -186,18 +238,13 @@ export function openSettingsModal() {
     };
 
     const onDragStart = (e) => {
-        // Ignore close button clicks
         if(e.target.closest('.sp-settings-close')) return;
-        
         isDragging = true;
         const coords = getClientCoords(e);
         startX = coords.x;
         startY = coords.y;
-        
-        // Prevent default only for touch to stop scroll/zoom
         if(e.type === 'touchstart') e.preventDefault();
 
-        // Disable centering transform when starting drag (if any)
         const rect = modal.getBoundingClientRect();
         modal.style.position = 'absolute';
         modal.style.left = rect.left + 'px';
@@ -206,18 +253,15 @@ export function openSettingsModal() {
         
         initialLeft = rect.left;
         initialTop = rect.top;
-        
         handle.style.cursor = 'grabbing';
     };
 
     const onDragMove = (e) => {
         if (!isDragging) return;
-        e.preventDefault(); // Stop Scroll
-
+        e.preventDefault(); 
         const coords = getClientCoords(e);
         const dx = coords.x - startX;
         const dy = coords.y - startY;
-        
         modal.style.left = (initialLeft + dx) + 'px';
         modal.style.top = (initialTop + dy) + 'px';
     };
@@ -230,71 +274,55 @@ export function openSettingsModal() {
     handle.addEventListener('mousedown', onDragStart);
     window.addEventListener('mousemove', onDragMove);
     window.addEventListener('mouseup', onDragEnd);
-    
-    // Touch
     handle.addEventListener('touchstart', onDragStart, {passive: false});
     window.addEventListener('touchmove', onDragMove, {passive: false});
     window.addEventListener('touchend', onDragEnd);
 
-    // --- Logic Implementation ---
     implementSettingsLogic(backdrop);
     
-    // Explicitly Trigger Stats Update on Open
     if (typeof window.spUpdateStats === 'function') {
         window.spUpdateStats();
     }
 }
 
-// === NEW: Helper to Apply Theme Logic (shared concept) ===
 function applyThemeLogic(themeMode) {
-    // 1. Flush Inline Styles (The "Nuclear" option for Light Mode purity)
     document.body.removeAttribute('style'); 
-    
-    // 2. Set Base Attribute
     document.documentElement.setAttribute('data-sp-theme', themeMode);
     localStorage.setItem('sp_theme_sync', themeMode);
 
-    // 3. Load Customization for THIS mode
-    const storageKey = `sp_custom_${themeMode}`; // e.g. sp_custom_light
+    const storageKey = `sp_custom_${themeMode}`;
     
     chrome.storage.local.get([storageKey], (res) => {
         const customObj = res[storageKey];
         if (customObj) {
-            // APPLY CUSTOM VARS
             Object.keys(customObj).forEach(key => {
                  const varName = key.startsWith('--') ? key : `--sp-forum-${key.replace('_','-')}`;
                  document.body.style.setProperty(varName, customObj[key]);
             });
-            // Mark as Custom so CSS overrides kick in
             document.documentElement.setAttribute('data-sp-theme', 'custom');
         }
-        // If no customObj, we just stick with the base data-sp-theme=mode we set in step 2.
     });
 }
 
 function implementSettingsLogic(backdrop) {
-    // ... Close handlers ...
     const closeBtn = backdrop.querySelector('.sp-settings-close');
     const close = () => backdrop.classList.remove('sp-settings-open');
     closeBtn.addEventListener('click', close);
     backdrop.addEventListener('click', e => { if(e.target === backdrop) close(); });
     
-    // Style Close Button (Dynamic)
     closeBtn.style.fontSize = "20px";
     closeBtn.style.fontWeight = "bold";
     closeBtn.style.lineHeight = "1";
     closeBtn.style.cursor = "pointer";
     closeBtn.title = "Close";
 
-    // ... Controls ...
-    // ... Controls ...
     const themeSel = backdrop.querySelector('#sp-theme-select');
     const custLink = backdrop.querySelector('#sp-theme-customize-link');
     
     if (custLink) {
         custLink.addEventListener('click', (e) => {
              e.preventDefault();
-             e.stopPropagation(); // Stop bubbling to prevent closing settings
+             e.stopPropagation();
              openThemeEditor();
         });
     }
@@ -307,18 +335,14 @@ function implementSettingsLogic(backdrop) {
 
     chrome.storage.local.get(['sp_theme', 'sp_btc_source', 'sp_show_graph', 'sp_show_pulse', 'sp_flash_logo'], res => {
         let theme = res.sp_theme || 'light';
-        // Migration Fix: if 'custom', force to 'dark' (safest assumption for existing users)
         if (theme === 'custom') theme = 'dark'; 
-        
         themeSel.value = theme;
         
-        // Graph Defaults to YES (true) unless explicitly false
         const showGraph = res.sp_show_graph !== false; 
         graphSel.value = showGraph ? "true" : "false";
-        btcRow.style.display = showGraph ? 'flex' : 'none'; // Toggle visibility on load
+        btcRow.style.display = showGraph ? 'flex' : 'none';
 
         btcSel.value = res.sp_btc_source || 'binance';
-        
         pulseSel.value = (res.sp_show_pulse !== false) ? "true" : "false";
         flashSel.value = (res.sp_flash_logo !== false) ? "true" : "false";
     });
@@ -329,19 +353,10 @@ function implementSettingsLogic(backdrop) {
         applyThemeLogic(val);
     });
     
-    // Open Theme Editor Handler
-    // Open Theme Editor Handler - Redundant block removed
-
-    
-    // Show Graph Logic
     graphSel.addEventListener('change', (e) => {
         const isShow = e.target.value === 'true';
         chrome.storage.local.set({ sp_show_graph: isShow });
-        
-        // Immediate UI Update
         btcRow.style.display = isShow ? 'flex' : 'none';
-        
-        // Find Floating Bar Graph Zone specifically
         const graphZone = document.getElementById('sp-stats-zone');
         if (graphZone) graphZone.style.display = isShow ? 'flex' : 'none';
     });
@@ -352,70 +367,67 @@ function implementSettingsLogic(backdrop) {
 
     pulseSel.addEventListener('change', (e) => {
         chrome.storage.local.set({ sp_show_pulse: e.target.value === 'true' });
-        // NOTE: "Main.js" loop needs to observe this or reload page. 
-        // A reload is fine, or the loop checks naturally.
-        // We will make injectPulseButtons check this in main.js
     });
 
     flashSel.addEventListener('change', (e) => {
         chrome.storage.local.set({ sp_flash_logo: e.target.value === 'true' });
     });
 
-    
-    // ... Display Name Validation ...
     const nameInp = backdrop.querySelector('#sp-name-input');
     const nameBtn = backdrop.querySelector('#sp-name-submit');
     
-    // Get Init Name
     chrome.storage.local.get(['custom_name', 'sp_public_id'], res => {
         nameInp.value = res.custom_name || res.sp_public_id || "";
     });
 
-    // ... Account Security : Restore Code Population ...
     const codeDisp = backdrop.querySelector('#sp-code-display');
     chrome.storage.local.get(['sp_uuid'], res => {
         if (res.sp_uuid) {
             codeDisp.textContent = res.sp_uuid;
         } else {
-            // Should exist, but if not, user needs to init extension
             codeDisp.textContent = "N/A - Restart Extension";
         }
     });
 
-    // Copy Button (Icon Flash)
     const copyBtn = backdrop.querySelector('#sp-copy-btn');
     copyBtn.addEventListener('click', () => {
         const txt = codeDisp.textContent;
         if(txt && txt !== '...') {
             navigator.clipboard.writeText(txt).then(() => {
                 const svg = copyBtn.innerHTML;
-                copyBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`; // Checkmark
+                copyBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
                 setTimeout(() => copyBtn.innerHTML = svg, 1500);
             });
         }
     });
     
-    // Restore Input Warning
     const resInp = backdrop.querySelector('#sp-restore-input');
     const resWarn = backdrop.querySelector('#sp-restore-warning');
     resInp.addEventListener('input', () => {
         resWarn.style.display = resInp.value.trim().length > 0 ? 'block' : 'none';
     });
     
-    // Restore Action
     const restoreBtn = backdrop.querySelector('#sp-restore-btn');
     restoreBtn.addEventListener('click', async () => {
         const code = resInp.value.trim();
         if(code) {
             restoreBtn.textContent = 'Syncing...';
+            // 2. BTC Mode -> Claim
+            if (isBtcMode) {
+                // Open Claim Page
+                const claimUrl = `${CONFIG.API_BASE_URL}/claim.php?voter_id=${voterId}&uuid=${uuid}`;
+                chrome.tabs.create({ url: claimUrl });
+                
+                // Optimistic Reset: Revert to SP logo immediately to show "Clicked" state
+                setLogoState(false);
+                return;
+            }
             restoreBtn.disabled = true;
             try {
-                // Fetch Identity from Backend
                 const response = await fetch(`${CONFIG.API_BASE_URL}/recover_identity.php?uuid=${encodeURIComponent(code)}`);
                 const json = await response.json();
                 
                 if (json.status === 'success') {
-                    // Recovered!
                     chrome.storage.local.set({ 
                         sp_uuid: code,
                         sp_public_id: json.data.public_id 
@@ -452,26 +464,19 @@ function implementSettingsLogic(backdrop) {
     });
 
     nameBtn.addEventListener('click', () => {
-        // ... Save Logic ...
         const val = nameInp.value.trim();
-        // Optimistic Save
         chrome.storage.local.set({ custom_name: val, sp_public_id: val });
         nameInp.style.borderColor = '#28a745';
         setTimeout(() => nameInp.style.borderColor = '', 2000);
     });
 
-    // ... Security Toggle ...
     const secBlock = backdrop.querySelector('#sp-security-block');
     const secToggle = backdrop.querySelector('#sp-security-toggle');
-    
-    // ... Ack Dropdown ...
     const ackSel = backdrop.querySelector('#sp-ack-select');
     
-    // Check Ack State
     chrome.storage.local.get(['memberRestoreAck'], res => {
         const isAck = !!res.memberRestoreAck;
         if(!isAck) {
-             // Add Pulse Animation if not Ack
              secToggle.classList.add('sp-flash-10s');
         } else {
              secToggle.classList.remove('sp-flash-10s');
@@ -489,13 +494,12 @@ function implementSettingsLogic(backdrop) {
         const isAck = e.target.value === 'true';
         chrome.storage.local.set({ memberRestoreAck: isAck });
         if(isAck) {
-            secToggle.classList.remove('sp-flash-10s'); // Stop pulsing
+            secToggle.classList.remove('sp-flash-10s');
         } else {
-            secToggle.classList.add('sp-flash-10s'); // Start pulsing
+            secToggle.classList.add('sp-flash-10s');
         }
     });
 
-    // FETCH STATS (One-Time Fetch, Exposed Globally)
     window.spUpdateStats = () => {
         chrome.storage.local.get(['sp_public_id'], res => {
             if (res.sp_public_id) {
@@ -518,12 +522,9 @@ function implementSettingsLogic(backdrop) {
         });
     };
 
-    // Initial Fetch on Creation
     window.spUpdateStats();
-
 }
 
-// --- Helper functions for State ---
 async function getState(key, def) {
     return new Promise((resolve) => {
         chrome.storage.local.get([key], (res) => {
@@ -539,7 +540,6 @@ async function setState(key, val) {
 
 // --- Floating Bar ---
 export function injectFloatingBar() {
-    // Ensure Theme is applied on load
     chrome.storage.local.get(['sp_theme'], res => {
         document.body.setAttribute('data-sp-theme', res.sp_theme || 'light');
     });
@@ -549,22 +549,11 @@ export function injectFloatingBar() {
     const bar = createEl('div', ['sp-floating-bar']);
     bar.id = 'sp-floating-bar-root';
     
-    // Initial Layout: Logo + Stats Zone
     bar.innerHTML = `
         <div class="sp-bar-content">
             <div class="sp-zone-logo" id="sp-logo-zone" title="Open Settings">
                 <div class="sp-logo-circle" id="sp-logo-container">
-                    <!-- Standard SVG Logo -->
-                    <svg viewBox="0 0 100 100" class="sp-std-logo">
-                        <defs>
-                            <linearGradient id="sp_logo_grad_float" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
-                                <stop offset="100%" style="stop-color:#1e40af;stop-opacity:1" />
-                            </linearGradient>
-                        </defs>
-                        <circle cx="50" cy="50" r="48" fill="url(#sp_logo_grad_float)" />
-                        <text x="50" y="66" font-family="Arial, sans-serif" font-weight="800" font-size="42" text-anchor="middle" fill="white" style="pointer-events:none;">SP</text>
-                    </svg>
+                    ${SP_LOGO_SVG}
                 </div>
             </div>
             
@@ -577,7 +566,7 @@ export function injectFloatingBar() {
 
     document.body.appendChild(bar);
 
-    // --- Robust Drag Logic (Mouse & Touch) ---
+    // --- Robust Drag Logic ---
     let isDragging = false;
     let hasMoved = false;
     let dragOffsetX = 0;
@@ -585,15 +574,13 @@ export function injectFloatingBar() {
     let startX = 0;
     let startY = 0;
 
-    // Force initial position to computed style OR stored position
     chrome.storage.local.get(['sp_bar_pos'], res => {
         if (res.sp_bar_pos) {
             bar.style.left = res.sp_bar_pos.left;
             bar.style.top = res.sp_bar_pos.top;
-            bar.style.bottom = 'auto'; // Prevent stretching against CSS default
-            bar.style.right = 'auto';  // Prevent stretching against CSS default
+            bar.style.bottom = 'auto'; 
+            bar.style.right = 'auto'; 
             
-            // Validate bounds
             const rect = bar.getBoundingClientRect();
             const winW = window.innerWidth;
             const winH = window.innerHeight;
@@ -604,10 +591,9 @@ export function injectFloatingBar() {
             if (parseFloat(bar.style.top) < 0) bar.style.top = '20px';
             
         } else {
-             // Default (Lower Left)
              const initRect = bar.getBoundingClientRect();
-             bar.style.bottom = 'auto'; // Clear bottom from CSS
-             bar.style.right = 'auto'; // Clear right
+             bar.style.bottom = 'auto'; 
+             bar.style.right = 'auto'; 
              bar.style.left = initRect.left + 'px';
              bar.style.top = initRect.top + 'px';
         }
@@ -621,10 +607,6 @@ export function injectFloatingBar() {
     };
 
     const onDragStart = (e) => {
-        // Allow Interaction with Content if not obviously dragging?
-        // Actually, floating bar is small. Let's just drag.
-        // But exclude stats inputs? No inputs there.
-        
         isDragging = true;
         hasMoved = false;
         
@@ -632,7 +614,6 @@ export function injectFloatingBar() {
         startX = coords.x;
         startY = coords.y;
         
-        // Prevent default only if needed (scroll)
         if(e.type === 'mousedown') e.preventDefault(); 
         
         const rect = bar.getBoundingClientRect();
@@ -646,14 +627,12 @@ export function injectFloatingBar() {
     const onDragMove = (e) => {
         if (!isDragging) return;
         
-        // Prevent Scroll on Mobile while dragging
         if(e.type === 'touchmove') e.preventDefault(); 
         if(e.type === 'mousemove') e.preventDefault();
 
         const coords = getClientCoords(e);
         const dx = Math.abs(coords.x - startX);
         const dy = Math.abs(coords.y - startY);
-        // Threshold for "movement"
         if (dx > 3 || dy > 3) {
             hasMoved = true;
         }
@@ -661,7 +640,6 @@ export function injectFloatingBar() {
         let newX = coords.x - dragOffsetX;
         let newY = coords.y - dragOffsetY;
 
-        // Clamp to screen
         const maxW = window.innerWidth - bar.offsetWidth;
         const maxH = window.innerHeight - bar.offsetHeight;
         
@@ -678,24 +656,33 @@ export function injectFloatingBar() {
         bar.classList.remove('dragging');
         document.body.classList.remove('sp-dragging');
         
-        // Save Position if moved
         if (hasMoved) {
             chrome.storage.local.set({ 
                 sp_bar_pos: { left: bar.style.left, top: bar.style.top } 
             });
         }
         
-        // Handle "Click" on Logo here if it wasn't a move
-        // Touch events might not fire 'click' reliably if we preventDefaulted move
+        // Handle "Click" on Logo here (Ghost Click Prevention)
         if (!hasMoved && e.target.closest('#sp-logo-zone')) {
-             // Stop Ghost Clicks (Touch + Mouse)
              if (e.type === 'touchend') e.preventDefault();
-             openSettingsModal();
+             
+             // LOGO HANDLER: Check if BTC or Settings
+             const logoZone = document.getElementById('sp-logo-zone');
+             // We can check title, or currentLogoState if we import it, 
+             // but title is set by setLogoState effectively.
+             if (logoZone && logoZone.title && logoZone.title.includes("CLAIM")) {
+                 chrome.storage.local.get(['sp_public_id', 'sp_uuid'], res => {
+                     const claimUrl = `https://shadowpulse.live/claim.php?voter_id=${res.sp_public_id}&uuid=${res.sp_uuid}`;
+                     window.open(claimUrl, '_blank');
+                     setLogoState(false);
+                 });
+             } else {
+                 openSettingsModal();
+             }
         }
     };
 
     const onResize = () => {
-        // Ensure bar stays on screen
         const rect = bar.getBoundingClientRect();
         let changed = false;
         if (rect.right > window.innerWidth) {
@@ -713,20 +700,15 @@ export function injectFloatingBar() {
         }
     };
 
-    // Attach Listeners
     bar.addEventListener('mousedown', onDragStart);
     window.addEventListener('mousemove', onDragMove);
     window.addEventListener('mouseup', onDragEnd);
-    
-    // Touch
     bar.addEventListener('touchstart', onDragStart, {passive: false});
-    window.addEventListener('touchmove', onDragMove, {passive: false}); // Non-passive to allow preventDefault
+    window.addEventListener('touchmove', onDragMove, {passive: false}); 
     window.addEventListener('touchend', onDragEnd);
-    
     window.addEventListener('resize', onResize);
 
-    // --- Start Stats Loop ---
-    // But check visibility first
+    // Initial Visibility check
     chrome.storage.local.get(['sp_show_graph'], res => {
          const showGraph = res.sp_show_graph !== false;
          if(!showGraph) {
@@ -738,39 +720,33 @@ export function injectFloatingBar() {
     startStatsLoop(bar);
 }
 
-// --- Stats Logic ---
 function startStatsLoop(bar) {
     const priceEl = bar.querySelector('.sp-stats-price');
     const graphEl = bar.querySelector('.sp-stats-graph');
-    let lastValidTime = 0;
 
     const update = async () => {
-        // Optimization: Pause when tab is hidden
         if (document.hidden) return;
 
-        // Check DOM visibility of the PARENT zone
         const statsZone = bar.querySelector('#sp-stats-zone');
         if (statsZone && statsZone.style.display === 'none') {
-             return; // Skip fetch if hidden
+             return; 
         }
 
         try {
-            // PROXY through Background Script to bypass CORS
             const response = await chrome.runtime.sendMessage({ type: "FETCH_STATS" });
-
             if (response && response.success) {
-                const data = response.data;
-                // Protection Removed to ensure data flows.
-                // We accept whatever the server sends to prevent 'locking'.
-                renderStats(priceEl, graphEl, data);
+                renderStats(priceEl, graphEl, response.data);
             } else {
-                console.error("Stats fail (BG):", response ? response.error : "No Response");
+                // Fail silently or log?
+                // console.error("Stats fail (BG):", response ? response.error : "No Response");
             }
-        } catch (e) { console.error("Stats Msg Error", e); }
+        } catch (e) { 
+            // console.error("Stats Msg Error", e);
+        }
     };
 
     update();
-    setInterval(update, CONFIG.POLLING_INTERVAL); // Use Config Interval
+    setInterval(update, CONFIG.POLLING_INTERVAL); 
 }
 
 export function renderStats(priceEl, graphEl, data) {
@@ -779,31 +755,26 @@ export function renderStats(priceEl, graphEl, data) {
     priceEl.textContent = data.price_label;
     priceEl.className = 'sp-stats-price ' + (data.trend === 'up' ? 'sp-trend-up' : 'sp-trend-down');
 
-    // SVG Graph
     const w = 80; const h = 18;
     
-    // Parse History: Handle both [numbers] (Legacy) and [{p,t}] (New)
     let history = [];
     if (Array.isArray(data.history)) {
         history = data.history.map(item => {
             if (typeof item === 'object' && item !== null) return { p: Number(item.p), t: Number(item.t) };
-            return { p: Number(item), t: 0 }; // Legacy fallback
+            return { p: Number(item), t: 0 }; 
         });
     }
 
     if (history.length < 1) return;
 
-    // Determine Y-Axis Range
     const prices = history.map(h => h.p).filter(n => !isNaN(n));
     if (prices.length === 0) return;
     const minP = Math.min(...prices);
     const maxP = Math.max(...prices);
     const rangeP = (maxP - minP) || 1;
 
-    // Determine X-Axis (Time)
     const hasTime = history[0].t > 0;
     
-    // Color: Green if Current > Start (Base), Red otherwise
     const startPriceVal = history[0].p;
     const endPriceVal = history[history.length - 1].p;
     const isPositive = endPriceVal >= startPriceVal;
@@ -813,24 +784,17 @@ export function renderStats(priceEl, graphEl, data) {
     let pathD = "";
     
     if (hasTime) {
-        // Dynamic Grid (Time Based)
         const lastT = history[history.length - 1].t;
         const windowSeconds = 3600;
         const startWindowT = lastT - windowSeconds;
-
-        // Determine Theme for Contrast
         const theme = document.body.getAttribute('data-sp-theme') || 'light';
         const isDark = theme === 'dark';
-        // Use Trend Color for tint, or generic black/white
         const blockFill = isDark ? '#ffffff' : '#000000';
-        // Increase opacity for Both Modes (User Request: Hard to see)
         const blockOpacity = '0.15'; 
 
-        // Align to 15-min (900s) boundaries
         const firstBlockT = Math.floor(startWindowT / 900) * 900;
         
         for (let t = firstBlockT; t <= lastT; t += 900) {
-            // Draw Background Block for ALTERNATE intervals
             const blockIndex = Math.round(t / 900);
             if (blockIndex % 2 === 0) {
                 const bStart = Math.max(t, startWindowT);
@@ -840,22 +804,17 @@ export function renderStats(priceEl, graphEl, data) {
                     const x1 = ((bStart - startWindowT) / windowSeconds) * w;
                     const x2 = ((bEnd - startWindowT) / windowSeconds) * w;
                     const bw = x2 - x1;
-                    
-                    // Prepend to grid string so it sits behind lines/path
                     grid = `<rect x="${x1}" y="0" width="${bw}" height="${h}" fill="${blockFill}" fill-opacity="${blockOpacity}" />` + grid;
                 }
             }
 
-            // Draw Vertical Tick at the generic 15m mark (if visible)
             if (t >= startWindowT) {
                  const timeOffset = t - startWindowT;
                  const x = (timeOffset / windowSeconds) * w;
-                 // Keep tick for precision, but make it very subtle
                  grid += `<line x1="${x}" y1="0" x2="${x}" y2="${h}" stroke="${color}" stroke-opacity="0.2" stroke-width="0.5" stroke-dasharray="2,2" />`;
             }
         }
 
-        // Build Path
         history.forEach((hItem, i) => {
             if (hItem.t < startWindowT) return; 
             const timeOffset = hItem.t - startWindowT;
@@ -865,18 +824,15 @@ export function renderStats(priceEl, graphEl, data) {
         });
 
     } else {
-        // Fallback Logic
         const maxPoints = 60;
         const stepX = w / (maxPoints - 1);
         const offset = maxPoints - history.length;
 
-        // Static Grid: Dynamic Color, Bold Opacity (0.35)
         for(let i=15; i<60; i+=15) {
             const x = i * stepX;
             grid += `<line x1="${x}" y1="0" x2="${x}" y2="${h}" stroke="${color}" stroke-opacity="0.35" stroke-width="1" stroke-dasharray="2,2" />`;
         }
         
-        // Path
         if (history.length === 1) {
              const x = offset * stepX; 
              const safeY = h - ((history[0].p - minP) / rangeP * (h - 2)) - 1; 
@@ -890,7 +846,6 @@ export function renderStats(priceEl, graphEl, data) {
         }
     }
 
-    // Starting Price Baseline (Dynamic Color, Stronger Opacity 0.6)
     const startY = h - ((history[0].p - minP) / rangeP * (h - 2)) - 1;
     grid += `<line x1="0" y1="${startY}" x2="${w}" y2="${startY}" stroke="${color}" stroke-opacity="0.6" stroke-width="1.5" />`;
 
@@ -902,55 +857,32 @@ export function renderStats(priceEl, graphEl, data) {
     `;
 }
 
-
-// --- Search Table (Replaces Google Search Area) ---
-// --- Search Table (Replaces Google Search Area) ---
 export function injectSearchTable() {
     if (!window.location.href.includes('action=search')) return;
-    
-    // Check if already injected
     if (document.getElementById('sp-search-table')) return;
 
-    // Use a specific strategy for SMF Default Theme
-    // Header is usually: <td class="catbg" ...>Set Search Parameters</td>
     const headers = Array.from(document.querySelectorAll('.catbg, .titlebg'));
     const paramHeader = headers.find(el => el.textContent.includes('Set Search Parameters'));
-    
     let targetContainer = null;
 
     if (paramHeader) {
-        // SMF Structure:
-        // <tr><td class="catbg">Header</td></tr>
-        // <tr><td class="windowbg">CONTENT</td></tr>
-        
-        // 1. Get the TR of the Header
         const headerTr = paramHeader.closest('tr');
         if (headerTr) {
-            // 2. Get the Next TR
             const contentTr = headerTr.nextElementSibling;
             if (contentTr) {
-                // 3. Get the TD inside valid content TR (class 'windowbg' usually)
                 const contentTd = contentTr.querySelector('td.windowbg, td.windowbg2');
-                if (contentTd) {
-                    targetContainer = contentTd;
-                }
+                if (contentTd) targetContainer = contentTd;
             }
         }
     }
     
-    // Fallback: Look for the Google Search form directly if header logic fails
     if (!targetContainer) {
         const googleForm = document.querySelector('form[action*="google"]');
-        if (googleForm) {
-            targetContainer = googleForm.parentElement; // The TD holding the form
-        }
+        if (googleForm) targetContainer = googleForm.parentElement; 
     }
 
     if (targetContainer) {
-        // We want to Replace "Google Search" but KEEP "Forum Search".
-        // Strategy: Find the Forum Search Form (action=search2)
         const forumForm = targetContainer.querySelector('form[action*="action=search2"]');
-        
         const table = createEl('table', ['sp-search-table']);
         table.id = 'sp-search-table';
         table.innerHTML = `
@@ -974,34 +906,14 @@ export function injectSearchTable() {
         `;
 
         if (forumForm) {
-            // If we found the Forum Form, we want to remove everything BEFORE it (Legacy Google stuff)
-            // And insert our table at the top.
-            
-            // 1. Move Forum Form (and its previous sibling if it's the header) to a safe fragment? 
-            // Or just iterate backwards from forumForm and delete?
-            
-            // Use a range to delete previous siblings?
-            // Safer: Just Loop.
             while (targetContainer.firstChild && targetContainer.firstChild !== forumForm) {
-                // Keep the "Forum Search" header if it exists immediately before?
-                // Visual check: "Forum Search" is usually a <b> or <strong> tag just before.
-                // But simplified: Let's clean top, Insert Table, Insert spacer.
-                // The User wants "Starting at Forum Search".
-                
-                // Let's check if the node is the "Forum Search" label
                 const node = targetContainer.firstChild;
-                if (node.textContent && node.textContent.includes('Forum Search') && node.nodeName !== 'A') {
-                     // We reached the Forum Search Header. Stop deleting.
-                     break; 
-                }
+                if (node.textContent && node.textContent.includes('Forum Search') && node.nodeName !== 'A') break; 
                 targetContainer.removeChild(node);
             }
-            
-            // Insert Table at the top
             targetContainer.insertBefore(table, targetContainer.firstChild);
 
         } else {
-            // Fallback: Clear all if we can't find the specific form (Safety)
             targetContainer.innerHTML = '';
             targetContainer.appendChild(table);
         }
@@ -1025,7 +937,6 @@ export function injectSearchTable() {
             }
         };
         
-        // Auto-Focus Google Input (SP is disabled)
         setTimeout(() => document.getElementById('sp-g-input')?.focus(), 100);
         
         bind('sp-s', q => `https://shadowpulse.live/reports/index.php?q=${encodeURIComponent(q)}`);
@@ -1034,7 +945,6 @@ export function injectSearchTable() {
     }
 }
 
-// --- Theme Editor (Dual Profile Support) ---
 export async function openThemeEditor() {
     let editorRoot = document.getElementById('sp-theme-editor-root');
     if (editorRoot) {
@@ -1042,19 +952,10 @@ export async function openThemeEditor() {
         return;
     }
 
-    // 1. Determine Current Theme Mode (Light vs Dark)
-    // We only edit the *active* mode
     const themeSel = document.getElementById('sp-theme-select');
-    // If we are somehow in 'custom' mode legacy, we need to know if it's based on light or dark.
-    // For now, let's rely on the Select value which we force to 'light' or 'dark' in the new UI.
     const currentMode = (themeSel ? themeSel.value : 'light'); 
-    
-    // Key: sp_custom_light OR sp_custom_dark
     const storageKey = `sp_custom_${currentMode}`;
-
     let startColors = {};
-
-    // Hardcoded defaults to match CSS
     const defaults = {
         light: {
             'bg': '#ffffff', 'text': '#000000', 'link': '#0000ff',
@@ -1068,29 +969,18 @@ export async function openThemeEditor() {
         }
     };
 
-    // Load Existing Customization for THIS mode
     try {
         const stored = await chrome.storage.local.get(storageKey);
         startColors = stored[storageKey] || defaults[currentMode];
-        
-        // MIGRATION CHECK: If no custom dark exists, check legacy 'sp_custom_theme'? 
-        // Only if mode is dark.
         if (currentMode === 'dark' && !stored[storageKey]) {
              const legacy = await chrome.storage.local.get('sp_custom_theme');
              if(legacy.sp_custom_theme) startColors = legacy.sp_custom_theme;
         }
-
     } catch (e) {
-        console.error("Error loading theme:", e);
         startColors = defaults[currentMode];
     }
-    
-    // Safety Fallback
     if(!startColors.bg) startColors = defaults[currentMode];
 
-    // Create BACKDROP to block settings window
-    // Settings has Z-Index ~20M (from CSS observation or assumption). 
-    // We'll use 21M to be safe.
     const backdropCtx = createEl('div', null, {
         id: 'sp-theme-editor-backdrop',
         style: 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.4); z-index: 21000000; display: flex; align-items: flex-start; justify-content: flex-start;'
@@ -1109,10 +999,8 @@ export async function openThemeEditor() {
         `
     });
 
-    // Close Function
     const closeEditor = () => backdropCtx.remove();
 
-    // Header
     const header = createEl('div', null, {
         id: 'sp-theme-drag-handle',
         style: 'padding: 15px; background: rgba(30, 41, 59, 0.8); border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; cursor: grab;'
@@ -1122,21 +1010,17 @@ export async function openThemeEditor() {
         style: 'background: none; border: none; color: #94a3b8; font-size: 16px; cursor: pointer;'
     });
     closeBtn.innerText = '✕';
-    
     closeBtn.onclick = closeEditor;
     header.appendChild(closeBtn);
     editorRoot.appendChild(header);
 
-    // Color Rows
     const body = createEl('div', null, { style: 'padding: 15px; display: flex; flex-direction: column; gap: 12px;' });
     
-    // Live Preview Helper
     const applyPreview = (key, hex) => {
         document.body.style.setProperty(`--sp-forum-${key.replace('_','-')}`, hex);
         document.documentElement.setAttribute('data-sp-theme', 'custom'); 
     };
 
-    // UI Mappings
     const mappings = [
         { label: "Background", key: "bg", val: startColors.bg },
         { label: "Text Color", key: "text", val: startColors.text },
@@ -1149,10 +1033,8 @@ export async function openThemeEditor() {
 
     mappings.forEach(m => {
         const row = createEl('div', null, { style: 'display: flex; align-items: center; justify-content: space-between;' });
-        
         const label = createEl('span', null, { style: 'font-size: 13px; color: #cbd5e1;' });
         label.innerText = m.label;
-        
         const inputContainer = createEl('div', null, { style: 'display: flex; align-items: center; gap: 8px;' });
         const textDisplay = createEl('span', null, { 
             id: `txt_${m.key}`,
@@ -1179,10 +1061,8 @@ export async function openThemeEditor() {
     });
     editorRoot.appendChild(body);
 
-    // Actions
     const footer = createEl('div', null, { style: 'padding: 15px; border-top: 1px solid #334155; display: flex; gap: 10px; justify-content: flex-end;' });
     
-    // SAVE BUTTON
     const saveBtn = createEl('button', null, {
         id: 'sp-theme-save',
         style: 'padding: 8px 12px; background: transparent; color: var(--sp-accent); border: 1px solid var(--sp-accent); border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;'
@@ -1196,22 +1076,16 @@ export async function openThemeEditor() {
             newTheme[m.key] = picker ? picker.value : m.val;
         });
         
-        // Save to SPECIFIC PROFILE
         chrome.storage.local.set({ 
             [storageKey]: newTheme,
-            // We do NOT set sp_theme='custom' anymore. We stay in 'light' or 'dark'.
-            // The presence of [storageKey] means we load it.
         }, () => {
-             // Reload Theme Application
              applyThemeLogic(currentMode);
-             
              const oldText = saveBtn.innerText;
              saveBtn.innerText = "SAVED!";
              setTimeout(() => saveBtn.innerText = oldText, 800);
         });
     });
 
-    // RESET BUTTON
     const resetBtn = createEl('button', null, {
         id: 'sp-theme-reset',
         style: 'padding: 8px 12px; background: transparent; color: #94a3b8; border: 1px solid #475569; border-radius: 6px; cursor: pointer; font-size: 12px;'
@@ -1220,7 +1094,6 @@ export async function openThemeEditor() {
     
     resetBtn.onclick = () => {
         if(confirm(`Reset ${currentMode.toUpperCase()} theme to defaults?`)) {
-            // Remove the specific key
             chrome.storage.local.remove([storageKey], () => {
                 applyThemeLogic(currentMode);
                 closeEditor();
@@ -1234,7 +1107,6 @@ export async function openThemeEditor() {
 
     document.body.appendChild(backdropCtx);
 
-    // --- Drag Logic (Mouse & Touch) ---
     let isDragging = false;
     let startX, startY, initialLeft, initialTop;
     
@@ -1251,24 +1123,20 @@ export async function openThemeEditor() {
         const coords = getClientCoords(e);
         startX = coords.x;
         startY = coords.y;
-        
         if(e.type === 'touchstart') e.preventDefault();
 
         const rect = editorRoot.getBoundingClientRect();
         initialLeft = rect.left;
         initialTop = rect.top;
-        
         header.style.cursor = 'grabbing';
     };
 
     const onDragMove = (e) => {
         if (!isDragging) return;
         e.preventDefault();
-        
         const coords = getClientCoords(e);
         const dx = coords.x - startX;
         const dy = coords.y - startY;
-        
         editorRoot.style.left = (initialLeft + dx) + 'px';
         editorRoot.style.top = (initialTop + dy) + 'px';
     };
@@ -1283,8 +1151,6 @@ export async function openThemeEditor() {
     header.addEventListener('mousedown', onDragStart);
     window.addEventListener('mousemove', onDragMove);
     window.addEventListener('mouseup', onDragEnd);
-
-    // Touch
     header.addEventListener('touchstart', onDragStart, {passive: false});
     window.addEventListener('touchmove', onDragMove, {passive: false});
     window.addEventListener('touchend', onDragEnd);
