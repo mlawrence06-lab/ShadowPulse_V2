@@ -412,40 +412,29 @@ function implementSettingsLogic(backdrop) {
         const code = resInp.value.trim();
         if(code) {
             restoreBtn.textContent = 'Syncing...';
-            // 2. BTC Mode -> Claim
-            if (isBtcMode) {
-                // Open Claim Page
-                const claimUrl = `${CONFIG.API_BASE_URL}/claim.php?voter_id=${voterId}&uuid=${uuid}`;
-                chrome.tabs.create({ url: claimUrl });
-                
-                // Optimistic Reset: Revert to SP logo immediately to show "Clicked" state
-                setLogoState(false);
-                return;
-            }
             restoreBtn.disabled = true;
-            try {
-                const response = await fetch(`${CONFIG.API_BASE_URL}/recover_identity.php?uuid=${encodeURIComponent(code)}`);
-                const json = await response.json();
-                
-                if (json.status === 'success') {
+            
+            chrome.runtime.sendMessage({ 
+                type: "RECOVER_IDENTITY", 
+                uuid: code 
+            }, response => {
+                if (response && response.success && response.data.status === 'success') {
                     chrome.storage.local.set({ 
                         sp_uuid: code,
-                        sp_public_id: json.data.public_id 
+                        sp_public_id: response.data.data.public_id 
                     }, () => {
                         restoreBtn.textContent = 'Success!';
                         setTimeout(() => window.location.reload(), 500);
                     });
                 } else {
-                    alert("Sync Failed: " + (json.message || "Unknown Error"));
+                    const errMsg = (response && response.data && response.data.message) 
+                        ? response.data.message 
+                        : (response && response.error) ? response.error : "Unknown Error";
+                    alert("Sync Failed: " + errMsg);
                     restoreBtn.textContent = 'GO';
                     restoreBtn.disabled = false;
                 }
-            } catch (e) {
-                console.error("Sync Error", e);
-                alert("Network Error during Sync.");
-                restoreBtn.textContent = 'GO';
-                restoreBtn.disabled = false;
-            }
+            });
         }
     });
 

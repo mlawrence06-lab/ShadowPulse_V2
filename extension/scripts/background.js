@@ -98,5 +98,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
            .catch(err => sendResponse({ success: false, error: err.message }));
         
         return true;
-   }
+    }
+
+    if (request.type === "RECOVER_IDENTITY") {
+        try {
+            const uuid = request.uuid || request.payload.uuid; // Support both
+            fetch(`${CONFIG.API_BASE_URL}/recover_identity.php?uuid=${encodeURIComponent(uuid)}`)
+               .then(res => res.json())
+               .then(data => sendResponse({ success: true, data: data }))
+               .catch(err => sendResponse({ success: false, error: err.message }));
+        } catch (e) {
+            sendResponse({ success: false, error: e.message });
+        }
+        return true;
+    }
 });
