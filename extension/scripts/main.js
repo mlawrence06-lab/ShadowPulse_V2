@@ -467,15 +467,31 @@ function createPulseButton(topicId, msgId, meta) {
 }
 
 // --- Polling Logic ---
-async function checkPulseStatus() {
+// --- Polling Logic (Heartbeat) ---
+async function heartbeat() {
   // if (document.hidden) return; // Allow background polling for Giveaway Alerts
 
-  // A. Global Pulse Check (Logo & BTC)
+  // A. Global Pulse Check (Logo & BTC & Stats)
   try {
     const res = await chrome.runtime.sendMessage({ type: "GET_LATEST_PULSE" });
     if (res && res.data) {
-      // Logic: Update Logo State
-      // Fix: Handle string "1"/"0" from PHP/Redis
+      
+      // 1. Broadcast Stats to UI.js (if present)
+      if (res.data.price_stats) {
+          document.dispatchEvent(new CustomEvent('sp-heartbeat', { detail: res.data.price_stats }));
+      } else {
+          // Fallback: If backend cache is cold/empty, fetch legacy stats from CDN (via BG to bypass CORS)
+          // This ensures graph doesn't disappear if backend cron hasn't run yet.
+          chrome.runtime.sendMessage({ type: "FETCH_STATS" })
+            .then(res => {
+                if (res && res.success && res.data) {
+                    document.dispatchEvent(new CustomEvent('sp-heartbeat', { detail: res.data }));
+                }
+            })
+            .catch(() => {});
+      }
+
+      // 2. Logic: Update Logo State
       const val = res.data.btc_active;
       const isBtc = val === 1 || val === "1" || val === true;
       if (isBtc) spLog("BTC Active Triggered via Polling!");
@@ -500,10 +516,7 @@ async function checkPulseStatus() {
   // B. Local Pulse Check & User Counts
   const visibleBtns = Array.from(document.querySelectorAll(".sp-pulse-btn"));
 
-  // Pick 3 random buttons to check for live updates?
-  // Or check all? 60s / 3 per poll seems slow.
-  // If polling is back to 2s, we can check 1 random button per poll comfortably.
-
+  // Check 1 random button per heartbeat
   for (let i = 0; i < 1; i++) {
     if (visibleBtns.length === 0) break;
     const btn = visibleBtns[Math.floor(Math.random() * visibleBtns.length)];
@@ -533,13 +546,8 @@ async function checkPulseStatus() {
         // Flash Logic for Post
         const pulseTime = parseFloat(last_pulse);
         if (pulseTime > lastPulseTimestamp) {
-          lastPulseTimestamp = pulseTime; // Global tracker, implies we handle latest across all posts?
-          // Wait, lastPulseTimestamp is global. This logic tracks "any post flashed".
-          // If we check random posts, we might miss flashes.
-          // But users requested "Real Time".
-          // Batch fetch in init takes care of initial state.
-          // This creates "liveness" feeling.
-
+          lastPulseTimestamp = pulseTime; 
+          
           const now = Date.now();
           if (
             now - lastFlashTime > CONFIG.FLASH_COOLDOWN &&
@@ -552,11 +560,13 @@ async function checkPulseStatus() {
       }
     } catch (e) {}
   }
+
+  // Schedule next beat strictly AFTER this one finishes
+  setTimeout(heartbeat, CONFIG.POLLING_INTERVAL);
 }
 
 function startPulsePolling() {
-  checkPulseStatus();
-  setInterval(checkPulseStatus, CONFIG.POLLING_INTERVAL);
+  heartbeat();
 }
 
 if (document.readyState === "loading") {

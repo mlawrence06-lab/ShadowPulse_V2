@@ -709,33 +709,21 @@ export function injectFloatingBar() {
     startStatsLoop(bar);
 }
 
+// --- Heartbeat Listener (No separate polling) ---
 function startStatsLoop(bar) {
     const priceEl = bar.querySelector('.sp-stats-price');
     const graphEl = bar.querySelector('.sp-stats-graph');
+    const statsZone = bar.querySelector('#sp-stats-zone');
 
-    const update = async () => {
-        if (document.hidden) return;
-
-        const statsZone = bar.querySelector('#sp-stats-zone');
-        if (statsZone && statsZone.style.display === 'none') {
-             return; 
+    // Init listener for Main.js heartbeat
+    document.addEventListener('sp-heartbeat', (e) => {
+        if (e.detail) {
+             renderStats(priceEl, graphEl, e.detail);
         }
+    });
 
-        try {
-            const response = await chrome.runtime.sendMessage({ type: "FETCH_STATS" });
-            if (response && response.success) {
-                renderStats(priceEl, graphEl, response.data);
-            } else {
-                // Fail silently or log?
-                // console.error("Stats fail (BG):", response ? response.error : "No Response");
-            }
-        } catch (e) { 
-            // console.error("Stats Msg Error", e);
-        }
-    };
-
-    update();
-    setInterval(update, CONFIG.POLLING_INTERVAL); 
+    // Initial check (optional, or just wait for first beat)
+    // If we want immediate data, main.js should fire it on load.
 }
 
 export function renderStats(priceEl, graphEl, data) {

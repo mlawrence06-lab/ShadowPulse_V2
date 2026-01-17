@@ -1,0 +1,8 @@
+# Binance Ticker
+* * * * * /usr/bin/php /var/www/html/cron/fetch_binance.php >> /home/mlawrence06/shadowpulse/logs/btc_update.log 2>&1
+
+# Daily Jobs (00:00 UTC)
+0 0 * * * /usr/bin/php /var/www/html/cron/snapshot_stats.php >> /var/www/html/cron/snapshot.log 2>&1
+
+# Weekly Jobs (00:15 UTC on Monday)
+15 0 * * 1 /usr/bin/php /var/www/html/cron/grant_upgrades.php >> /var/www/html/cron/upgrades.log 2>&1
