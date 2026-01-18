@@ -1,7 +1,173 @@
-"use strict";
+﻿"use strict";
 
 import { spLog, spDebug, createEl } from "./utils.js";
-// ... (Keep existing imports)
+import {
+  injectFloatingBar,
+  injectSearchTable,
+  openSettingsModal,
+  setLogoState,
+} from "./ui.js";
+import { generateRandomId } from "./words.js";
+import { CONFIG } from "./config.js";
+
+// State
+let lastPulseTimestamp = 0;
+let lastFlashTime = 0;
+let lastSelfPulseTime = 0;
+let lastGlobalPulseTime = 0;
+let userPublicId = null;
+let userUuid = null;
+
+// Settings Cache
+const SETTINGS = {
+  sp_show_pulse: true,
+  sp_flash_logo: true,
+};
+
+function stripTrustScoreStyles() {
+  const scores = document.querySelectorAll(".trustscore");
+  scores.forEach((el) => el.removeAttribute("style"));
+}
+
+// Module-Level State
+
+export function init() {
+  spLog("Initializing ShadowPulse...");
+  // Standard Init Logic
+  if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", runInitSequence);
+  } else {
+      runInitSequence();
+  }
+}
+
+function runInitSequence() {
+     chrome.storage.local.get(
+    [
+      "sp_show_pulse",
+      "sp_flash_logo",
+      "sp_theme",
+      "sp_custom_light",
+      "sp_custom_dark",
+      "sp_custom_theme",
+    ],
+    (res) => {
+      if (res.sp_show_pulse !== undefined)
+        SETTINGS.sp_show_pulse = res.sp_show_pulse;
+      if (res.sp_flash_logo !== undefined)
+        SETTINGS.sp_flash_logo = res.sp_flash_logo;
+
+      // Theme Logic
+      let theme = res.sp_theme || "light";
+      if (theme === "custom") {
+        theme = "dark";
+        if (!res.sp_custom_dark && res.sp_custom_theme) {
+          res.sp_custom_dark = res.sp_custom_theme;
+        }
+      }
+
+      const profileVars =
+        theme === "light" ? res.sp_custom_light : res.sp_custom_dark;
+      document.body.removeAttribute("style");
+      document.documentElement.setAttribute("data-sp-theme", theme);
+      localStorage.setItem("sp_theme_sync", theme);
+
+      if (profileVars) {
+        Object.keys(profileVars).forEach((key) => {
+          const varName = key.startsWith("--")
+            ? key
+            : `--sp-forum-${key.replace("_", "-")}`;
+          document.body.style.setProperty(varName, profileVars[key]);
+        });
+        document.documentElement.setAttribute("data-sp-theme", "custom");
+      }
+
+      initUserId().then(() => {
+        stripTrustScoreStyles();
+        injectPulseButtons();
+        injectFloatingBar();
+        injectSearchTable();
+
+        // Track View
+        const topicMatch = window.location.href.match(/topic=(\d+)/);
+        const boardMatch = window.location.href.match(/board=(\d+)/);
+
+        if (topicMatch) {
+          if (window.location.href.includes("action=")) return;
+          const tId = topicMatch[1];
+          const meta = getPageData();
+
+          chrome.runtime.sendMessage({
+            type: "TRACK_VIEW",
+            payload: {
+              topic_id: tId,
+              voter_id: userPublicId,
+              uuid: userUuid,
+              board_id: meta.boardId,
+              topic_title: meta.topicTitle,
+            },
+          });
+        } else if (boardMatch) {
+          const bId = boardMatch[1];
+          let bTitle = document.title.replace(" - Bitcoin Forum", "").trim();
+
+          chrome.runtime.sendMessage({
+            type: "TRACK_VIEW",
+            payload: {
+              board_id: bId,
+              voter_id: userPublicId,
+              uuid: userUuid,
+              is_board_view: true,
+              board_title: bTitle,
+            },
+          });
+        }
+
+        // Start Polling
+        startPulsePolling();
+      });
+    }
+  );
+
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === "local") {
+      if (changes.sp_show_pulse)
+        SETTINGS.sp_show_pulse = changes.sp_show_pulse.newValue;
+      if (changes.sp_flash_logo)
+        SETTINGS.sp_flash_logo = changes.sp_flash_logo.newValue;
+    }
+  });
+}
+
+function initUserId() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(["sp_public_id", "sp_uuid"], (res) => {
+      if (!res.sp_public_id) {
+        const newId = generateRandomId();
+        const uuid = crypto.randomUUID();
+        spLog("Generated new ID:", newId);
+        chrome.storage.local.set(
+          {
+            sp_public_id: newId,
+            sp_uuid: uuid,
+          },
+          () => {
+            userPublicId = newId;
+            userUuid = uuid;
+            resolve();
+          }
+        );
+      } else {
+        userPublicId = res.sp_public_id;
+        spLog("Loaded ID:", userPublicId);
+        if (res.sp_uuid) {
+          userUuid = res.sp_uuid;
+        }
+        resolve();
+      }
+    });
+  });
+}
 
 function getPageData() {
   const meta = {
@@ -21,7 +187,7 @@ function getPageData() {
     if (navDiv) {
       navLinks = navDiv.querySelectorAll("a");
     } else {
-        spDebug(CONFIG.DEBUG, "Breadcrumbs Missing: Neither .navigate_section nor div.nav found.");
+        spDebug(CONFIG.DEBUG, "CRITICAL: Breadcrumbs Missing: Neither .navigate_section nor div.nav found.");
     }
   }
 
@@ -46,7 +212,10 @@ function getPageData() {
 
   // 3. Fallback: Window Title & URL Regex
   if (meta.topicId === "0") {
-    spDebug(CONFIG.DEBUG, "Topic ID Missing from Breadcrumbs. Trying URL regex.");
+    // Only warn if the URL suggests we SHOULD have a topic ID
+    if (window.location.href.includes("topic=")) {
+         spDebug(CONFIG.DEBUG, "Topic ID Missing from Breadcrumbs. Trying URL regex.");
+    }
     const tMatch = window.location.href.match(/topic=(\d+)/);
     if (tMatch) {
       meta.topicId = tMatch[1];
@@ -124,66 +293,65 @@ function flashLogoStub() {
 function injectPulseButtons() {
   if (SETTINGS.sp_show_pulse === false) return;
 
-  // 1. Selector Strategy: Support Standard Table AND Mobile Divs
-  // "td.td_headerandpost" is standard SMF.
-  // "div.post_wrapper" or similar might be used in responsive themes.
-  // We'll stick to td.td_headerandpost for now as it's the core BCT structure,
-  // but we'll be more flexible finding children.
-  const posts = document.querySelectorAll("td.td_headerandpost, .post_wrapper");
-
-  spLog(`Injecting Pulse Buttons. Posts found: ${posts.length}`);
+  // Selector Strategy: Unique Subject IDs
+  // Rely on the fact that every post has a unique <div id="subject_123">
+  // This avoids finding nested/ambiguous TDs.
+  const subjectDivs = document.querySelectorAll("#quickModForm div[id^='subject_']");
+  
+  spLog(`Injecting Pulse Buttons. Subjects found: ${subjectDivs.length}`);
+  
   const pageMeta = getPageData();
   const pageTopicId = pageMeta.topicId;
 
-  posts.forEach((containerProp) => {
-    if (containerProp.dataset.spInjected) return;
+  subjectDivs.forEach((subjectDiv) => {
+    // 1. Extract MsgID from ID (Reliable)
+    // ID format: "subject_12345"
+    const idParts = subjectDiv.id.split('_');
+    if (idParts.length < 2) return;
+    const msgId = idParts[1];
 
-    // Use 'containerProp' as the base. In standard table, it's the TD.
-    // We need to find the "Link to Post" which contains the msgID.
-    // It's usually a link starting with '#' or containing 'msg12345'
-    const links = Array.from(containerProp.querySelectorAll("a"));
-    const postNumLink = links.find(
-      (a) =>
-        (a.textContent.trim().startsWith("#") && /^\#\d+$/.test(a.textContent.trim())) ||
-        (a.href && (a.href.includes("#msg") || a.href.includes(";msg=")))
+    if (!msgId || msgId === "0") return;
+
+    // 2. Find Action Container via Message Link (Universal Anchor)
+    // The "Link to Post" (#1, #2) is present for BOTH Guests and Members.
+    // Use this to find the correct button container (ignmsgbttnsX), 
+    // which might be in a different TD/Row than the subject.
+    // ID-based lookup is safest if we can match the href msgID.
+    const messageLink = Array.from(document.querySelectorAll(`a[href*="msg${msgId}"]`)).find(a => 
+        a.textContent.trim().startsWith("#") || a.name === `msg${msgId}`
     );
 
-    if (!postNumLink) return;
+    if (!messageLink) {
+        // Fallback: If no link found, skip or default to subject's container? 
+        // Better to skip to avoid misplaced buttons.
+        return; 
+    }
 
-    // The "Action Container" is where we append the button.
-    // In standard theme, it's a div near the top right or bottom right.
-    // We look for the "Merit" button usually.
-    const actionContainer = postNumLink.closest("div") || containerProp;
-
-    let topicId = pageTopicId;
-    let msgId = "0";
-
-    const href = postNumLink.href;
-    const topicMatch = href.match(/topic=(\d+)/);
-    if (topicMatch) topicId = topicMatch[1];
-
-    const msgMatch = href.match(/msg(\d+)/) || href.match(/#msg(\d+)/);
-    if (msgMatch) msgId = msgMatch[1];
+    // The container (e.g. div#ignmsgbttns1)
+    const actionContainer = messageLink.closest("div") || messageLink.parentElement;
     
-    // Safety: If msgId is still 0, try to parse from the link text (e.g. #123) won't give msgId.
-    // We must have msgId.
-    if (msgId === "0") return;
+    // 3. Find Context for Data Extraction (Author/Title)
+    // Use the Subject Div's container (TD) for traversing to author/title
+    const containerProp = subjectDiv.closest("td");
+    
+    // 5. Data Extraction (Author & Title)
+    let postTitle = subjectDiv.textContent.trim();
+    // If it's a link inside subject div?
+    const subjectLink = subjectDiv.querySelector("a");
+    if (subjectLink) postTitle = subjectLink.textContent.trim();
 
-    // Data Extraction: Author & Subject
-    let postTitle = "";
     let postAuthor = "Unknown";
     let postAuthorUid = 0;
 
-    // A. Find Author: Look for profile link nearby
-    // Strategy: Go up to the Row/Container and search for profile link
-    // DOM Order Safety: In 99% of layouts, Author Plugin/Cell comes BEFORE the post body.
-    // Exclusion Safety: Ensure we don't pick up a profile link INSIDE the message body (e.g. a quote).
+    // Find Author (Same logic as before, relative to container)
+    // Usually in the previous TD or same row
     const parentRow = containerProp.closest("tr") || containerProp.closest(".post_wrapper") || containerProp.parentElement;
     if (parentRow) {
         const allLinks = Array.from(parentRow.querySelectorAll("a"));
         const profileLink = allLinks.find(a => {
             const isProfile = a.href && a.href.includes("action=profile;u=");
-            const isInPostBody = a.closest(".post"); // Standard SMF body class
+            // Ensure strictly distinct from post body links
+            const isInPostBody = a.closest(".post"); 
             return isProfile && !isInPostBody; 
         });
 
@@ -193,58 +361,64 @@ function injectPulseButtons() {
              if (uMatch) postAuthorUid = uMatch[1];
         }
     }
-
-    // B. Find Subject
-    // Standard: div id="subject_123"
-    const subjectDiv = containerProp.querySelector(`div[id^="subject_${msgId}"]`) || containerProp.querySelector(`div[id^="subject_"]`);
-    if (subjectDiv) {
-        const subjectLink = subjectDiv.querySelector("a");
-        if (subjectLink) postTitle = subjectLink.textContent.trim();
-        else postTitle = subjectDiv.textContent.trim(); // Text only subject
-    }
     
-    // Fallback Subject: Use Page Title if individual post subject is missing
+    // Fallback Subject
     if (!postTitle && pageMeta.topicTitle) {
         postTitle = "Re: " + pageMeta.topicTitle; 
     }
 
-    // Injection Location
-    const meritLink = Array.from(actionContainer.querySelectorAll("a")).find((a) =>
-      a.href.includes("action=merit")
-    );
-
+    // 6. Injection Location Strategy
+    // Goal: Place "under" +Merit button if it exists.
+    // If not (e.g. Guest), place near the other buttons (Quote, etc).
+    
+    // Find Anchors
+    const allLinks = Array.from(actionContainer.querySelectorAll("a"));
+    const meritLink = allLinks.find((a) => a.href.includes("action=merit"));
+    const quoteLink = allLinks.find((a) => a.href.includes("action=quote"));
+    
+    // Create Wrapper (Flex Column for Stacking)
     const wrapper = createEl("div", ["sp-pulse-wrapper"]);
     wrapper.style.display = "inline-flex";
-    wrapper.style.flexDirection = "column";
-    wrapper.style.alignItems = "flex-end";
+    wrapper.style.flexDirection = "column"; 
+    wrapper.style.alignItems = "flex-end"; // Right align logic
     wrapper.style.verticalAlign = "top";
     wrapper.style.marginLeft = "4px";
 
-    if (meritLink) {
-      meritLink.parentNode.insertBefore(wrapper, meritLink);
-      wrapper.appendChild(meritLink);
-    } else {
-      // Fallback: Just append to the container if Merit button missing (e.g. own post or guest)
-      actionContainer.appendChild(wrapper);
-    }
-
-    const btn = createPulseButton(topicId, msgId, {
+    const btn = createPulseButton(pageTopicId, msgId, {
       boardId: pageMeta.boardId,
       topicTitle: pageMeta.topicTitle,
       postTitle: postTitle,
       postAuthor: postAuthor,
       postAuthorUid: postAuthorUid,
     });
-    wrapper.appendChild(btn);
 
-    // Stats Row Injection
-    // Try to find "keyinfo" or "smalltext"
+    if (meritLink) {
+      // Primary: Wrap Merit and stack Pulse under it
+      meritLink.parentNode.insertBefore(wrapper, meritLink);
+      wrapper.appendChild(meritLink);
+      wrapper.appendChild(btn);
+    } else if (quoteLink) {
+      // Secondary: Guest Mode (No Merit). Place NEXT to Quote button.
+      // We don't wrap Quote, we just insert our wrapper AFTER Quote.
+      quoteLink.parentNode.insertBefore(wrapper, quoteLink.nextSibling); 
+      wrapper.appendChild(btn);
+    } else {
+      // Fallback: Guest with no buttons (just #1 link).
+      // Place it next to the message link (or at end of container).
+      actionContainer.appendChild(wrapper);
+      wrapper.appendChild(btn);
+    }
+
+    // 7. Inject Stats Row
+    // Try to find "keyinfo" (Top left of post header usually)
+    // Or "smalltext"
     let headerDiv = containerProp.querySelector(".keyinfo");
     if (!headerDiv) {
+      // Sometimes it's just a smalltext div
       const smallTexts = containerProp.querySelectorAll(".smalltext");
-      if (smallTexts.length > 0) {
-        headerDiv = smallTexts[0];
-      }
+      // Find the one that contains the date/subject?
+      // Usually the first one in the header TD is the date/subject line container
+      if (smallTexts.length > 0) headerDiv = smallTexts[0];
     }
 
     const statsRow = createEl("div", ["sp-pulse-info-row"]);
@@ -262,11 +436,11 @@ function injectPulseButtons() {
         headerDiv.parentNode.appendChild(statsRow);
       }
     } else {
-      // Last resort: Prepend to the container
       containerProp.insertBefore(statsRow, containerProp.firstChild);
     }
-
-    containerProp.dataset.spInjected = "true";
+    
+    // Check for "sp-injected-flag" ? No, user said remove "bad code".
+    // We rely on unique subject IDs.
   });
 
   const allBtns = document.querySelectorAll(".sp-pulse-btn");
@@ -289,10 +463,6 @@ function initLogoClick() {
 
       e.preventDefault();
       e.stopPropagation();
-
-      // Check state via title or imported state?
-      // UI logic handles drag-clicks via setLogoState updates
-      // But valid click here is backup.
 
       if (logoZone.title.includes("CLAIM")) {
         const claimUrl = `https://shadowpulse.live/claim.php?voter_id=${userPublicId}&uuid=${userUuid}`;
@@ -338,6 +508,7 @@ async function fetchPagePulseStatus(msgIds) {
 function createPulseButton(topicId, msgId, meta) {
   const btnPulse = createEl("a", ["sp-pulse-btn"]);
   btnPulse.href = "#";
+  // Clean Button Text
   btnPulse.textContent = "+Pulse";
   btnPulse.title = `Give Pulse as ${userPublicId}`;
 
@@ -405,13 +576,15 @@ function createPulseButton(topicId, msgId, meta) {
 }
 
 // --- Polling Logic ---
-// --- Polling Logic (Heartbeat) ---
 async function heartbeat() {
   // if (document.hidden) return; // Allow background polling for Giveaway Alerts
 
   // A. Global Pulse Check (Logo & BTC & Stats)
   try {
-    const res = await chrome.runtime.sendMessage({ type: "GET_LATEST_PULSE" });
+    const res = await chrome.runtime.sendMessage({ 
+        type: "GET_LATEST_PULSE",
+        voter_id: userPublicId 
+    });
     if (res && res.data) {
       
       // 1. Broadcast Stats to UI.js (if present)
@@ -505,10 +678,4 @@ async function heartbeat() {
 
 function startPulsePolling() {
   heartbeat();
-}
-
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", init);
-} else {
-  init();
 }

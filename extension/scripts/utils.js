@@ -11,8 +11,8 @@ export function spDebug(isDebug, ...args) {
   if (!isDebug) return;
   const ts = new Date().toISOString();
   
-  // Append OS/Browser info for context
-  const sysInfo = `[${navigator.platform} | ${navigator.userAgent}]`;
+  // Append OS/Browser/URL info for context
+  const sysInfo = `[${navigator.platform} | ${navigator.userAgent} | ${window.location.href}]`;
   
   console.log("[ShadowPulse DEBUG]", ts, sysInfo, ...args);
 

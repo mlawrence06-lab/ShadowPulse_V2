@@ -92,7 +92,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
 
     if (request.type === "GET_LATEST_PULSE") {
-        fetch(`${CONFIG.API_BASE_URL}/get_latest_pulse.php?t=${Date.now()}`)
+        const voterId = request.voter_id || '';
+        fetch(`${CONFIG.API_BASE_URL}/get_latest_pulse.php?t=${Date.now()}&voter_id=${encodeURIComponent(voterId)}`)
            .then(res => res.json())
            .then(data => sendResponse({ success: true, data: data }))
            .catch(err => sendResponse({ success: false, error: err.message }));
