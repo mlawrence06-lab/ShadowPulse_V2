@@ -727,7 +727,12 @@ function startStatsLoop(bar) {
 }
 
 export function renderStats(priceEl, graphEl, data) {
-    if (!priceEl || !graphEl || !data) return;
+    if (!priceEl || !graphEl) return;
+    
+    if (!data) {
+        priceEl.textContent = "...";
+        return;
+    }
 
     priceEl.textContent = data.price_label;
     priceEl.className = 'sp-stats-price ' + (data.trend === 'up' ? 'sp-trend-up' : 'sp-trend-down');
