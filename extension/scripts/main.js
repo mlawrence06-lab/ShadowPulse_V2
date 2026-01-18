@@ -551,12 +551,18 @@ async function heartbeat() {
 
       if (!isBtc && SETTINGS.sp_flash_logo) {
         const globalTime = parseFloat(res.data.last_pulse);
+        const lastAuthor = res.data.last_pulse_by; 
+
         if (lastGlobalPulseTime === 0) {
           lastGlobalPulseTime = globalTime;
         } else if (globalTime > lastGlobalPulseTime) {
           lastGlobalPulseTime = globalTime;
-          if (Date.now() - lastSelfPulseTime > 3000) {
-            flashLogoStub();
+          
+          // STRICT SELF-FLASH CHECK:
+          // If the pulse came from ME (userPublicId), do NOT flash the logo.
+          // Only flash if it came from someone else.
+          if (lastAuthor !== userPublicId) {
+             flashLogoStub();
           }
         }
       }
