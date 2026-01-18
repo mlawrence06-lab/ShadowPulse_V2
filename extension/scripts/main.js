@@ -259,6 +259,7 @@ function injectPulseButtons(pageMeta) {
     if (!messageLink) return;
 
     const actionContainer = messageLink.closest("div") || messageLink.parentElement;
+    const containerTd = subjectDiv.closest("td");
     
     let postAuthor = "Unknown";
     let postAuthorUid = 0;
