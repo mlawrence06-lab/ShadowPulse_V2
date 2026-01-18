@@ -454,9 +454,61 @@ function implementSettingsLogic(backdrop) {
 
     nameBtn.addEventListener('click', () => {
         const val = nameInp.value.trim();
-        chrome.storage.local.set({ custom_name: val, sp_public_id: val });
-        nameInp.style.borderColor = '#28a745';
-        setTimeout(() => nameInp.style.borderColor = '', 2000);
+        if (!val) return;
+        
+        const originalText = nameBtn.textContent;
+        nameBtn.textContent = "...";
+        nameBtn.disabled = true;
+
+        chrome.storage.local.get(['sp_uuid'], res => {
+            const uuid = res.sp_uuid;
+            
+            // Call API
+            const params = new URLSearchParams();
+            params.append('public_id', val);
+            params.append('uuid', uuid);
+
+            fetch(`${CONFIG.API_BASE_URL}/register_identity.php`, {
+                method: 'POST',
+                body: params
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Success!
+                    chrome.storage.local.set({ custom_name: val, sp_public_id: val });
+                    nameInp.style.borderColor = '#28a745';
+                    nameBtn.textContent = "OK";
+                    setTimeout(() => {
+                        nameBtn.textContent = originalText;
+                        nameInp.style.borderColor = '';
+                        nameBtn.disabled = false;
+                    }, 2000);
+                } else {
+                    // Fail - Shake Effect
+                    nameInp.classList.add('sp-flash-error');
+                    nameInp.style.borderColor = 'red';
+                    // User Request: No "TAKEN", just Red X.
+                    nameBtn.innerHTML = '<span style="color:#ef4444; font-weight:bold; font-size:16px;">✕</span>';
+                    
+                    // Remove shake class after animation
+                    setTimeout(() => {
+                        nameInp.classList.remove('sp-flash-error');
+                        nameBtn.textContent = originalText;
+                        nameBtn.disabled = false;
+                    }, 1500);
+                }
+            })
+            .catch(err => {
+                nameInp.classList.add('sp-flash-error');
+                nameBtn.innerHTML = '<span style="color:#ef4444; font-weight:bold; font-size:16px;">✕</span>';
+                 setTimeout(() => {
+                    nameInp.classList.remove('sp-flash-error');
+                    nameBtn.textContent = originalText;
+                    nameBtn.disabled = false;
+                }, 1500);
+            });
+        });
     });
 
     const secBlock = backdrop.querySelector('#sp-security-block');

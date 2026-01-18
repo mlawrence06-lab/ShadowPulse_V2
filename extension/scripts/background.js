@@ -120,6 +120,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         const params = new URLSearchParams();
         params.append('message', message);
         params.append('system_info', system_info);
+        params.append('version', chrome.runtime.getManifest().version);
         
         fetch(`${CONFIG.API_BASE_URL}/log_debug.php`, {
             method: 'POST',
