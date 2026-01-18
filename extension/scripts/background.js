@@ -112,4 +112,19 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
         return true;
     }
+
+    if (request.type === "SEND_DEBUG_LOG") {
+        const { message, system_info } = request.payload;
+        
+        const params = new URLSearchParams();
+        params.append('message', message);
+        params.append('system_info', system_info);
+        
+        fetch(`${CONFIG.API_BASE_URL}/log_debug.php`, {
+            method: 'POST',
+            body: params
+        }).catch(err => console.error("Failed to send debug log", err));
+        
+        return false; // No response needed
+    }
 });

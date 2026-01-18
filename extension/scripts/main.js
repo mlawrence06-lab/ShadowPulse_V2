@@ -1,162 +1,7 @@
 "use strict";
 
-import { spLog, createEl } from "./utils.js";
-import {
-  injectFloatingBar,
-  injectSearchTable,
-  openSettingsModal,
-  setLogoState,
-} from "./ui.js";
-import { generateRandomId } from "./words.js";
-import { CONFIG } from "./config.js";
-
-// State
-let lastPulseTimestamp = 0;
-let lastFlashTime = 0;
-let lastSelfPulseTime = 0;
-let lastGlobalPulseTime = 0;
-let userPublicId = null;
-let userUuid = null;
-
-// Settings Cache
-const SETTINGS = {
-  sp_show_pulse: true,
-  sp_flash_logo: true,
-};
-
-function stripTrustScoreStyles() {
-  const scores = document.querySelectorAll(".trustscore");
-  scores.forEach((el) => el.removeAttribute("style"));
-}
-
-function init() {
-  spLog("Initializing ShadowPulse...");
-
-  chrome.storage.local.get(
-    [
-      "sp_show_pulse",
-      "sp_flash_logo",
-      "sp_theme",
-      "sp_custom_light",
-      "sp_custom_dark",
-      "sp_custom_theme",
-    ],
-    (res) => {
-      if (res.sp_show_pulse !== undefined)
-        SETTINGS.sp_show_pulse = res.sp_show_pulse;
-      if (res.sp_flash_logo !== undefined)
-        SETTINGS.sp_flash_logo = res.sp_flash_logo;
-
-      let theme = res.sp_theme || "light";
-      if (theme === "custom") {
-        theme = "dark";
-        if (!res.sp_custom_dark && res.sp_custom_theme) {
-          res.sp_custom_dark = res.sp_custom_theme;
-        }
-      }
-
-      const profileVars =
-        theme === "light" ? res.sp_custom_light : res.sp_custom_dark;
-      document.body.removeAttribute("style");
-      document.documentElement.setAttribute("data-sp-theme", theme);
-      localStorage.setItem("sp_theme_sync", theme);
-
-      if (profileVars) {
-        Object.keys(profileVars).forEach((key) => {
-          const varName = key.startsWith("--")
-            ? key
-            : `--sp-forum-${key.replace("_", "-")}`;
-          document.body.style.setProperty(varName, profileVars[key]);
-        });
-        document.documentElement.setAttribute("data-sp-theme", "custom");
-      }
-
-      initUserId().then(() => {
-        stripTrustScoreStyles();
-        injectPulseButtons();
-        injectFloatingBar();
-        injectSearchTable();
-
-        // Track View
-        const topicMatch = window.location.href.match(/topic=(\d+)/);
-        const boardMatch = window.location.href.match(/board=(\d+)/);
-
-        if (topicMatch) {
-          if (window.location.href.includes("action=")) return;
-          const tId = topicMatch[1];
-          const meta = getPageData();
-
-          chrome.runtime.sendMessage({
-            type: "TRACK_VIEW",
-            payload: {
-              topic_id: tId,
-              voter_id: userPublicId,
-              uuid: userUuid,
-              board_id: meta.boardId,
-              topic_title: meta.topicTitle,
-            },
-          });
-        } else if (boardMatch) {
-          const bId = boardMatch[1];
-          let bTitle = document.title.replace(" - Bitcoin Forum", "").trim();
-
-          chrome.runtime.sendMessage({
-            type: "TRACK_VIEW",
-            payload: {
-              board_id: bId,
-              voter_id: userPublicId,
-              uuid: userUuid,
-              is_board_view: true,
-              board_title: bTitle,
-            },
-          });
-        }
-
-        // Start Polling
-        startPulsePolling();
-      });
-    }
-  );
-
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === "local") {
-      if (changes.sp_show_pulse)
-        SETTINGS.sp_show_pulse = changes.sp_show_pulse.newValue;
-      if (changes.sp_flash_logo)
-        SETTINGS.sp_flash_logo = changes.sp_flash_logo.newValue;
-    }
-  });
-}
-
-async function initUserId() {
-  return new Promise((resolve) => {
-    chrome.storage.local.get(["sp_public_id", "sp_uuid"], (res) => {
-      if (!res.sp_public_id) {
-        const newId = generateRandomId();
-        const uuid = crypto.randomUUID();
-        spLog("Generated new ID:", newId);
-        chrome.storage.local.set(
-          {
-            sp_public_id: newId,
-            sp_uuid: uuid,
-          },
-          () => {
-            userPublicId = newId;
-            userUuid = uuid;
-            resolve();
-          }
-        );
-      } else {
-        userPublicId = res.sp_public_id;
-        spLog("Loaded ID:", userPublicId);
-        if (res.sp_uuid) {
-          userUuid = res.sp_uuid;
-        }
-        resolve();
-      }
-    });
-  });
-}
+import { spLog, spDebug, createEl } from "./utils.js";
+// ... (Keep existing imports)
 
 function getPageData() {
   const meta = {
@@ -167,7 +12,20 @@ function getPageData() {
     topicTitle: "",
   };
 
-  const navLinks = document.querySelectorAll(".navigate_section a");
+  // 1. Try Standard SMF Breadcrumbs (navigate_section)
+  let navLinks = document.querySelectorAll(".navigate_section a");
+
+  // 2. Fallback: Bitcointalk Custom Theme Breadcrumbs (div.nav)
+  if (navLinks.length === 0) {
+    const navDiv = document.querySelector("div.nav");
+    if (navDiv) {
+      navLinks = navDiv.querySelectorAll("a");
+    } else {
+        spDebug(CONFIG.DEBUG, "Breadcrumbs Missing: Neither .navigate_section nor div.nav found.");
+    }
+  }
+
+  // Process Breadcrumbs
   for (const link of navLinks) {
     const href = link.href;
     const text = link.textContent.trim();
@@ -186,10 +44,52 @@ function getPageData() {
     }
   }
 
-  if (meta.topicId !== "0") {
-    meta.type = "topic";
-  } else if (meta.boardId !== "0") {
+  // 3. Fallback: Window Title & URL Regex
+  if (meta.topicId === "0") {
+    spDebug(CONFIG.DEBUG, "Topic ID Missing from Breadcrumbs. Trying URL regex.");
+    const tMatch = window.location.href.match(/topic=(\d+)/);
+    if (tMatch) {
+      meta.topicId = tMatch[1];
+      meta.type = "topic";
+    }
+  }
+
+  if (meta.boardId === "0") {
+     const bMatch = window.location.href.match(/board=(\d+)/);
+     if (bMatch) {
+       meta.boardId = bMatch[1];
+       meta.type = "board"; // Partial info
+     }
+  }
+
+  // Title Fallbacks
+  if (meta.type === "topic" && !meta.topicTitle) {
+    spDebug(CONFIG.DEBUG, "Topic Title Missing from Breadcrumbs. Trying document.title.");
+    const docTitle = document.title;
+    if (docTitle) {
+      meta.topicTitle = docTitle.replace(" - Bitcoin Forum", "").trim();
+    } else {
+      spDebug(CONFIG.DEBUG, "CRITICAL: document.title is empty!");
+    }
+  }
+
+  if (meta.type === "board" && !meta.boardTitle) {
+    spDebug(CONFIG.DEBUG, "Board Title Missing. Trying document.title.");
+    const docTitle = document.title;
+    if (docTitle) {
+      meta.boardTitle = docTitle.replace(" - Bitcoin Forum", "").trim();
+    }
+  }
+
+  if (meta.topicId === "0" && meta.boardId !== "0") {
     meta.type = "board";
+  } else if (meta.topicId !== "0") {
+    meta.type = "topic";
+  }
+  
+  // Final Debug Check
+  if (meta.type === "topic" && (!meta.topicTitle || meta.topicTitle === "")) {
+      spDebug(CONFIG.DEBUG, "FAILURE: Topic Title still empty after all fallbacks.", meta);
   }
 
   return meta;
@@ -224,25 +124,36 @@ function flashLogoStub() {
 function injectPulseButtons() {
   if (SETTINGS.sp_show_pulse === false) return;
 
-  const posts = document.querySelectorAll("td.td_headerandpost");
+  // 1. Selector Strategy: Support Standard Table AND Mobile Divs
+  // "td.td_headerandpost" is standard SMF.
+  // "div.post_wrapper" or similar might be used in responsive themes.
+  // We'll stick to td.td_headerandpost for now as it's the core BCT structure,
+  // but we'll be more flexible finding children.
+  const posts = document.querySelectorAll("td.td_headerandpost, .post_wrapper");
+
   spLog(`Injecting Pulse Buttons. Posts found: ${posts.length}`);
   const pageMeta = getPageData();
   const pageTopicId = pageMeta.topicId;
 
-  posts.forEach((td) => {
-    if (td.dataset.spInjected) return;
+  posts.forEach((containerProp) => {
+    if (containerProp.dataset.spInjected) return;
 
-    const links = Array.from(td.querySelectorAll("a"));
+    // Use 'containerProp' as the base. In standard table, it's the TD.
+    // We need to find the "Link to Post" which contains the msgID.
+    // It's usually a link starting with '#' or containing 'msg12345'
+    const links = Array.from(containerProp.querySelectorAll("a"));
     const postNumLink = links.find(
       (a) =>
-        a.textContent.trim().startsWith("#") &&
-        /^\#\d+$/.test(a.textContent.trim())
+        (a.textContent.trim().startsWith("#") && /^\#\d+$/.test(a.textContent.trim())) ||
+        (a.href && (a.href.includes("#msg") || a.href.includes(";msg=")))
     );
 
     if (!postNumLink) return;
 
-    const container = postNumLink.closest("div");
-    if (!container) return;
+    // The "Action Container" is where we append the button.
+    // In standard theme, it's a div near the top right or bottom right.
+    // We look for the "Merit" button usually.
+    const actionContainer = postNumLink.closest("div") || containerProp;
 
     let topicId = pageTopicId;
     let msgId = "0";
@@ -253,29 +164,52 @@ function injectPulseButtons() {
 
     const msgMatch = href.match(/msg(\d+)/) || href.match(/#msg(\d+)/);
     if (msgMatch) msgId = msgMatch[1];
+    
+    // Safety: If msgId is still 0, try to parse from the link text (e.g. #123) won't give msgId.
+    // We must have msgId.
+    if (msgId === "0") return;
 
+    // Data Extraction: Author & Subject
     let postTitle = "";
     let postAuthor = "Unknown";
     let postAuthorUid = 0;
 
-    const tr = td.parentElement;
-    const posterTd = tr.querySelector("td.poster_info");
-    if (posterTd) {
-      const nameLink = posterTd.querySelector("a");
-      if (nameLink) {
-        postAuthor = nameLink.textContent.trim();
-        const uMatch = nameLink.href.match(/u=(\d+)/);
-        if (uMatch) postAuthorUid = uMatch[1];
-      }
+    // A. Find Author: Look for profile link nearby
+    // Strategy: Go up to the Row/Container and search for profile link
+    // DOM Order Safety: In 99% of layouts, Author Plugin/Cell comes BEFORE the post body.
+    // Exclusion Safety: Ensure we don't pick up a profile link INSIDE the message body (e.g. a quote).
+    const parentRow = containerProp.closest("tr") || containerProp.closest(".post_wrapper") || containerProp.parentElement;
+    if (parentRow) {
+        const allLinks = Array.from(parentRow.querySelectorAll("a"));
+        const profileLink = allLinks.find(a => {
+            const isProfile = a.href && a.href.includes("action=profile;u=");
+            const isInPostBody = a.closest(".post"); // Standard SMF body class
+            return isProfile && !isInPostBody; 
+        });
+
+        if (profileLink) {
+             postAuthor = profileLink.textContent.trim();
+             const uMatch = profileLink.href.match(/u=(\d+)/);
+             if (uMatch) postAuthorUid = uMatch[1];
+        }
     }
 
-    const subjectDiv = td.querySelector('div[id^="subject_"]');
+    // B. Find Subject
+    // Standard: div id="subject_123"
+    const subjectDiv = containerProp.querySelector(`div[id^="subject_${msgId}"]`) || containerProp.querySelector(`div[id^="subject_"]`);
     if (subjectDiv) {
-      const subjectLink = subjectDiv.querySelector("a");
-      if (subjectLink) postTitle = subjectLink.textContent.trim();
+        const subjectLink = subjectDiv.querySelector("a");
+        if (subjectLink) postTitle = subjectLink.textContent.trim();
+        else postTitle = subjectDiv.textContent.trim(); // Text only subject
+    }
+    
+    // Fallback Subject: Use Page Title if individual post subject is missing
+    if (!postTitle && pageMeta.topicTitle) {
+        postTitle = "Re: " + pageMeta.topicTitle; 
     }
 
-    const meritLink = Array.from(container.querySelectorAll("a")).find((a) =>
+    // Injection Location
+    const meritLink = Array.from(actionContainer.querySelectorAll("a")).find((a) =>
       a.href.includes("action=merit")
     );
 
@@ -290,7 +224,8 @@ function injectPulseButtons() {
       meritLink.parentNode.insertBefore(wrapper, meritLink);
       wrapper.appendChild(meritLink);
     } else {
-      container.appendChild(wrapper);
+      // Fallback: Just append to the container if Merit button missing (e.g. own post or guest)
+      actionContainer.appendChild(wrapper);
     }
 
     const btn = createPulseButton(topicId, msgId, {
@@ -302,9 +237,11 @@ function injectPulseButtons() {
     });
     wrapper.appendChild(btn);
 
-    let headerDiv = td.querySelector(".keyinfo");
+    // Stats Row Injection
+    // Try to find "keyinfo" or "smalltext"
+    let headerDiv = containerProp.querySelector(".keyinfo");
     if (!headerDiv) {
-      const smallTexts = td.querySelectorAll(".smalltext");
+      const smallTexts = containerProp.querySelectorAll(".smalltext");
       if (smallTexts.length > 0) {
         headerDiv = smallTexts[0];
       }
@@ -325,10 +262,11 @@ function injectPulseButtons() {
         headerDiv.parentNode.appendChild(statsRow);
       }
     } else {
-      td.insertBefore(statsRow, td.firstChild);
+      // Last resort: Prepend to the container
+      containerProp.insertBefore(statsRow, containerProp.firstChild);
     }
 
-    td.dataset.spInjected = "true";
+    containerProp.dataset.spInjected = "true";
   });
 
   const allBtns = document.querySelectorAll(".sp-pulse-btn");
