@@ -93,20 +93,23 @@ function runInitSequence() {
         const boardMatch = window.location.href.match(/board=(\d+)/);
 
         if (topicMatch) {
-          if (window.location.href.includes("action=")) return;
-          const tId = topicMatch[1];
-          const meta = getPageData();
-
-          chrome.runtime.sendMessage({
-            type: "TRACK_VIEW",
-            payload: {
-              topic_id: tId,
-              voter_id: userPublicId,
-              uuid: userUuid,
-              board_id: meta.boardId,
-              topic_title: meta.topicTitle,
-            },
-          });
+          // Fix: Do not RETURN here, or it kills startPulsePolling() below.
+          // access check: Only track if NOT an action page (e.g. reply/post)
+          if (!window.location.href.includes("action=")) {
+              const tId = topicMatch[1];
+              const meta = getPageData();
+    
+              chrome.runtime.sendMessage({
+                type: "TRACK_VIEW",
+                payload: {
+                  topic_id: tId,
+                  voter_id: userPublicId,
+                  uuid: userUuid,
+                  board_id: meta.boardId,
+                  topic_title: meta.topicTitle,
+                },
+              });
+          }
         } else if (boardMatch) {
           const bId = boardMatch[1];
           let bTitle = document.title.replace(" - Bitcoin Forum", "").trim();
@@ -187,7 +190,10 @@ function getPageData() {
     if (navDiv) {
       navLinks = navDiv.querySelectorAll("a");
     } else {
-        spDebug(CONFIG.DEBUG, "CRITICAL: Breadcrumbs Missing: Neither .navigate_section nor div.nav found.");
+        // Only log CRITICAL if we expect breadcrumbs (topic/board pages)
+        if (window.location.href.includes("topic=") || window.location.href.includes("board=")) {
+           spDebug(CONFIG.DEBUG, "CRITICAL: Breadcrumbs Missing: Neither .navigate_section nor div.nav found.");
+        }
     }
   }
 

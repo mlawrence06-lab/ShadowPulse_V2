@@ -596,6 +596,7 @@ export function injectFloatingBar() {
     };
 
     const onDragStart = (e) => {
+        if(e.target.closest('.sp-settings-close')) return;
         isDragging = true;
         hasMoved = false;
         
@@ -611,6 +612,12 @@ export function injectFloatingBar() {
         
         bar.classList.add('dragging');
         document.body.classList.add('sp-dragging');
+        
+        // Dynamically add listeners ONLY during drag
+        window.addEventListener('mousemove', onDragMove);
+        window.addEventListener('mouseup', onDragEnd);
+        window.addEventListener('touchmove', onDragMove, {passive: false});
+        window.addEventListener('touchend', onDragEnd);
     };
 
     const onDragMove = (e) => {
@@ -644,6 +651,12 @@ export function injectFloatingBar() {
         isDragging = false;
         bar.classList.remove('dragging');
         document.body.classList.remove('sp-dragging');
+        
+        // Cleanup listeners
+        window.removeEventListener('mousemove', onDragMove);
+        window.removeEventListener('mouseup', onDragEnd);
+        window.removeEventListener('touchmove', onDragMove);
+        window.removeEventListener('touchend', onDragEnd);
         
         if (hasMoved) {
             chrome.storage.local.set({ 
@@ -690,11 +703,9 @@ export function injectFloatingBar() {
     };
 
     bar.addEventListener('mousedown', onDragStart);
-    window.addEventListener('mousemove', onDragMove);
-    window.addEventListener('mouseup', onDragEnd);
+    // Removed global mousemove/up listeners here (now in onDragStart)
     bar.addEventListener('touchstart', onDragStart, {passive: false});
-    window.addEventListener('touchmove', onDragMove, {passive: false}); 
-    window.addEventListener('touchend', onDragEnd);
+    // Removed global touchmove/end listeners here
     window.addEventListener('resize', onResize);
 
     // Initial Visibility check
@@ -871,17 +882,17 @@ export function injectSearchTable() {
             <tr>
                 <td class="sp-search-col">
                     <div class="sp-search-header">ShadowPulse</div>
-                    <input type="text" id="sp-s-input" placeholder="Search Forum..." disabled style="opacity:0.5; cursor:not-allowed;" />
+                    <input type="text" id="sp-s-input" placeholder="Search Forum..." disabled style="opacity:0.5; cursor:not-allowed;" autocomplete="off" />
                     <button id="sp-s-btn" disabled style="opacity:0.5; cursor:not-allowed;">Go</button>
                 </td>
                 <td class="sp-search-col">
                     <div class="sp-search-header">Google</div>
-                    <input type="text" id="sp-g-input" placeholder="Site Search..." />
+                    <input type="text" id="sp-g-input" placeholder="Site Search..." autocomplete="off" />
                     <button id="sp-g-btn">Go</button>
                 </td>
                 <td class="sp-search-col">
                     <div class="sp-search-header">BitList</div>
-                    <input type="text" id="sp-n-input" placeholder="Advanced..." disabled style="opacity:0.5; cursor:not-allowed;" />
+                    <input type="text" id="sp-n-input" placeholder="Advanced..." disabled style="opacity:0.5; cursor:not-allowed;" autocomplete="off" />
                     <button id="sp-n-btn" disabled style="opacity:0.5; cursor:not-allowed;">Go</button>
                 </td>
             </tr>
@@ -919,7 +930,7 @@ export function injectSearchTable() {
             }
         };
         
-        setTimeout(() => document.getElementById('sp-g-input')?.focus(), 100);
+        // setTimeout(() => document.getElementById('sp-g-input')?.focus(), 100);
         
         bind('sp-s', q => `https://shadowpulse.live/reports/index.php?q=${encodeURIComponent(q)}`);
         bind('sp-g', q => `https://www.google.com/search?q=site:bitcointalk.org ${encodeURIComponent(q)}`);
