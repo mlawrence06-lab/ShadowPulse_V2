@@ -1,145 +1,5 @@
-﻿(function() {
-"use strict";
-
-// --- CONFIG ---
-const CONFIG = {
-    API_BASE_URL: "https://shadowpulse.live/api",
-    STATS_URL: "https://shadowpulsev2.b-cdn.net/stats.json",
-    POLLING_INTERVAL: 5000,
-    FLASH_COOLDOWN: 5000,
-    DEBUG: true
-};
-
-// --- UTILS ---
-function spLog(...args) {
-  const ts = new Date().toISOString();
-  console.log("[ShadowPulse]", ts, ...args);
-}
-
-function spDebug(isDebug, ...args) {
-  if (!isDebug) return;
-  const ts = new Date().toISOString();
-  const sysInfo = `[${navigator.platform} | ${navigator.userAgent} | ${window.location.href}]`;
-  console.log("[ShadowPulse DEBUG]", ts, sysInfo, ...args);
-  try {
-      const message = args.map(a => (typeof a === 'object') ? JSON.stringify(a) : String(a)).join(" ");
-      chrome.runtime.sendMessage({
-          type: "SEND_DEBUG_LOG",
-          payload: { message: message, system_info: sysInfo }
-      });
-  } catch (e) {}
-}
-
-function spError(...args) {
-  const ts = new Date().toISOString();
-  console.error("[ShadowPulse]", ts, ...args);
-}
-
-function createEl(tag, classes = [], attrs = {}) {
-  const el = document.createElement(tag);
-  if (typeof classes === "string") {
-    if (classes) el.className = classes;
-  } else if (Array.isArray(classes) && classes.length) {
-    el.className = classes.join(" ");
-  }
-  for (const [k, v] of Object.entries(attrs)) {
-    el.setAttribute(k, v);
-  }
-  return el;
-}
-
-// --- WORDS ---
-const WORDS = [
-    // NATO / Phonetic
-    "Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", "India", "Juliet", 
-    "Kilo", "Lima", "Mike", "November", "Oscar", "Papa", "Quebec", "Romeo", "Sierra", "Tango", 
-    "Uniform", "Victor", "Whiskey", "Xray", "Yankee", "Zulu",
-    // Space & Cosmos
-    "Nebula", "Star", "Planet", "Moon", "Comet", "Meteor", "Galaxy", "Orbit", "Gravity", "Rocket", 
-    "Astro", "Cosmos", "Solar", "Lunar", "Void", "Abyss", "Horizon", "Zenith", "Nadir", "Apex",
-    "Aurora", "Nova", "Pulsar", "Quasar", "Stellar", "Vortex", "Eclipse", "Solstice", "Equinox",
-    "Constellation", "Asteroid", "Crater", "Vacuum", "Singularity", "Photon", "Spectrum", "Prism",
-    // Tech & Cyber
-    "Cyber", "Tech", "Data", "Code", "Link", "Node", "Block", "Chain", "Token", "Coin", 
-    "Mine", "Hash", "Cloud", "Net", "Web", "Logic", "Input", "Output", "Signal", "Pulse",
-    "Bit", "Byte", "Pixel", "Vector", "Matrix", "Grid", "Server", "Client", "Proxy", "Router",
-    "Switch", "Kernel", "Shell", "Script", "Algo", "Cipher", "Crypto", "Key", "Lock", "Vault",
-    "Drone", "Robot", "Mech", "Android", "Cyborg", "Bionic", "Quantum", "Nano", "Micro", "Macro",
-    "Laser", "Beam", "Ray", "Radio", "Sonar", "Radar", "Wifi", "Sync", "Async", "Stream",
-    // Elements & Nature
-    "Fire", "Ice", "Wind", "Storm", "Thunder", "Bolt", "Spark", "Flash", "Flame", "Blaze",
-    "Frost", "Snow", "Rain", "Mist", "Fog", "Haze", "Dew", "Drop", "Wave", "Tide",
-    "Ocean", "Sea", "River", "Lake", "Pond", "Stream", "Creek", "Brook", "Spring", "Well",
-    "Earth", "Rock", "Stone", "Sand", "Dust", "Mud", "Clay", "Iron", "Steel", "Metal",
-    "Gold", "Silver", "Copper", "Bronze", "Brass", "Zinc", "Tin", "Lead", "Mercury", "Chrome",
-    "Carbon", "Neon", "Argon", "Xenon", "Helium", "Oxygen", "Nitrogen", "Hydrogen", "Plasma",
-    "Crystal", "Gem", "Jewel", "Diamond", "Ruby", "Emerald", "Sapphire", "Opal", "Topaz", "Jade",
-    "Onyx", "Pearl", "Coral", "Amber", "Quartz", "Granite", "Marble", "Slate", "Basalt", "Magma",
-    "Lava", "Ash", "Smoke", "Steam", "Gas", "Vapor", "Fume", "Smog", "Soot", "Char",
-    // Animals & Creatures
-    "Wolf", "Bear", "Lion", "Tiger", "Fox", "Hawk", "Eagle", "Falcon", "Owl", "Raven",
-    "Crow", "Shark", "Whale", "Dolphin", "Orca", "Seal", "Otter", "Crab", "Lobster", "Squid",
-    "Octopus", "Jelly", "Fish", "Snake", "Viper", "Cobra", "Python", "Boa", "Lizard", "Gecko",
-    "Turtle", "Frog", "Toad", "Newt", "Salamander", "Dragon", "Wyvern", "Drake", "Griffin", "Phoenix",
-    "Hydra", "Titan", "Giant", "Troll", "Goblin", "Elf", "Dwarf", "Orc", "Mage", "Wizard",
-    "Witch", "Druid", "Rogue", "Bard", "Cleric", "Paladin", "Knight", "Warrior", "Hunter", "Scout",
-    // Abstract & Concepts
-    "Time", "Space", "Life", "Death", "Soul", "Spirit", "Mind", "Body", "Heart", "Brain",
-    "Thought", "Idea", "Dream", "Hope", "Fear", "Love", "Hate", "Joy", "Pain", "Rage",
-    "Fury", "Calm", "Peace", "War", "Chaos", "Order", "Law", "Rule", "Fate", "Destiny",
-    "Luck", "Chance", "Risk", "Reward", "Game", "Play", "Work", "Rest", "Sleep", "Wake",
-    "Day", "Night", "Dawn", "Dusk", "Noon", "Midnight", "Hour", "Minute", "Second", "Moment",
-    "Era", "Age", "Epoch", "Cycle", "Loop", "Phase", "Stage", "Level", "Zone", "Area",
-    "Region", "Sector", "Field", "Domain", "Realm", "World", "Land", "Map", "Chart", "Graph",
-    // Colors & Light
-    "Red", "Blue", "Green", "Yellow", "Orange", "Purple", "Violet", "Indigo", "Cyan", "Teal",
-    "Lime", "Pink", "Rose", "Magenta", "Maroon", "Navy", "Azure", "Sky", "Aqua", "Turquoise",
-    "White", "Black", "Gray", "Grey", "Dark", "Light", "Bright", "Dim", "Shadow", "Shade",
-    "Ghost", "Phantom", "Specter", "Wraith", "Spirit", "Demon", "Angel", "Saint", "Sinner", "God",
-    // Objects & Tools
-    "Hammer", "Axe", "Sword", "Shield", "Spear", "Bow", "Arrow", "Dagger", "Knife", "Blade",
-    "Wand", "Staff", "Rod", "Orb", "Ring", "Amulet", "Chains", "Rope", "Wire", "Cable",
-    "Gear", "Cog", "Wheel", "Lever", "Pulley", "Screw", "Nail", "Bolt", "Nut", "Wrench",
-    "Drill", "Saw", "File", "Chisel", "Plane", "Clamp", "Vise", "Anvil", "Forge", "Smelter",
-    // Architecture & Places
-    "City", "Town", "Village", "Hamlet", "Camp", "Base", "Fort", "Keep", "Castle", "Tower",
-    "Spire", "Dome", "Vault", "Crypt", "Tomb", "Grave", "Shrine", "Altar", "Temple", "Church",
-    "Bridge", "Gate", "Door", "Wall", "Floor", "Roof", "Window", "Room", "Hall", "Corridor",
-    "Street", "Road", "Path", "Track", "Trail", "Way", "Route", "Lane", "Alley", "Avenue",
-    // Verbs/Actions (as nouns or continuous)
-    "Run", "Walk", "Jump", "Fly", "Swim", "Dive", "Climb", "Fall", "Rise", "Spin",
-    "Turn", "Twist", "Bend", "Break", "Fix", "Mend", "Build", "Make", "Create", "Destroy",
-    "Seek", "Find", "Lost", "Found", "Hide", "Hunt", "Chase", "Race", "Win", "Lose",
-    // Misc Cool Words
-    "Ace", "Joker", "King", "Queen", "Jack", "Ten", "Nine", "Eight", "Seven", "Six",
-    "Five", "Four", "Three", "Two", "One", "Zero", "Null", "Nil", "None", "All",
-    "Alpha", "Omega", "Beta", "Gamma", "Delta", "Epsilon", "Zeta", "Eta", "Theta", "Iota",
-    "Kappa", "Lambda", "Mu", "Nu", "Xi", "Omicron", "Pi", "Rho", "Sigma", "Tau",
-    "Upsilon", "Phi", "Chi", "Psi", "Omega", "Infinity", "Eternity", "Forever", "Always", "Never",
-    "Limit", "Bound", "Edge", "Rim", "Margin", "Border", "Line", "Point", "Dot", "Spot",
-    "Mark", "Sign", "Sigil", "Rune", "Glyph", "Symbol", "Icon", "Logo", "Badge", "Crest",
-    "Flag", "Banner", "Standard", "Emblem", "Totem", "Idol", "Relic", "Artifact", "Device", "Machine",
-    "Engine", "Motor", "Drive", "Power", "Force", "Energy", "Mass", "Speed", "Velocity", "Accel",
-    "Momentum", "Inertia", "Friction", "Drag", "Lift", "Thrust", "Torque", "Tension", "Stress", "Strain",
-    "Pressure", "Heat", "Cold", "Temp", "Volt", "Amp", "Watt", "Ohm", "Hertz", "Joule",
-    "Newton", "Gram", "Meter", "Liter", "Second", "Byte", "Bit", "Pixel", "Voxel", "Frame",
-    "Scene", "Shot", "Cut", "Take", "Roll", "Act", "Play", "Show", "Cast", "Crew",
-    // (Approx 450+ words here. Start combining them for ~202,500 pairs)
-];
-
-function generateRandomId() {
-    const w1 = WORDS[Math.floor(Math.random() * WORDS.length)];
-    const w2 = WORDS[Math.floor(Math.random() * WORDS.length)];
-    const w3 = WORDS[Math.floor(Math.random() * WORDS.length)];
-    const num = Math.floor(Math.random() * 100); // 0-99
-    const suffix = num.toString().padStart(2, '0');
-    
-    return `${w1}-${w2}-${w3}-${suffix}`;
-}
-
-// --- UI ---
-
-
+import { createEl, spLog } from "./utils.js";
+import { CONFIG } from "./config.js";
 
 // --- Logo States (Pixel Perfect Strings) ---
 const SP_LOGO_SVG = `
@@ -168,7 +28,7 @@ const BTC_LOGO_SVG = `
 
 let currentLogoState = 'SP';
 
-function setLogoState(isBtc) {
+export function setLogoState(isBtc) {
     const container = document.getElementById('sp-logo-container');
     const newState = isBtc ? 'BTC' : 'SP';
     
@@ -195,7 +55,7 @@ function setLogoState(isBtc) {
     }
 }
 
-function openSettingsModal() {
+export function openSettingsModal() {
     let backdrop = document.getElementById('sp-settings-root');
     if (backdrop) {
         backdrop.classList.toggle('sp-settings-open');
@@ -287,7 +147,7 @@ function openSettingsModal() {
                 <div class="sp-settings-row">
                     <label>Display Name</label>
                     <div style="display:flex; gap:4px; align-items:center;">
-                        <input type="text" id="sp-name-input" name="sp_user_id_field" autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other" placeholder="User ID" style="width:180px; text-align:right;" />
+                        <input type="text" id="sp-name-input" placeholder="User ID" style="width:180px; text-align:right;" />
                         <button id="sp-name-submit" style="width:24px; height:24px; padding:0; cursor:pointer;" disabled>✓</button>
                     </div>
                 </div>
@@ -298,16 +158,16 @@ function openSettingsModal() {
                      <span>Pulse Power:</span>
                      <div style="display:flex; align-items:center; gap:8px;">
                         <a href="#" id="sp-upgrade-link" class="sp-link" target="_blank" style="font-size:11px; color:#22c55e; font-weight:bold; display:none; animation: sp-pulse 2s infinite;">UPGRADE</a>
-                        <span class="sp-stat-value" id="sp-stat-power">\u2014</span>
+                        <span class="sp-stat-value" id="sp-stat-power">—</span>
                      </div>
                 </div>
                 <div class="sp-settings-row">
                      <span>Topic Views:</span>
-                     <span class="sp-stat-value" id="sp-stat-views">\u2014</span>
+                     <span class="sp-stat-value" id="sp-stat-views">—</span>
                 </div>
                 <div class="sp-settings-row">
                      <span>Vote Pulses:</span>
-                     <span class="sp-stat-value" id="sp-stat-votes">\u2014</span>
+                     <span class="sp-stat-value" id="sp-stat-votes">—</span>
                 </div>
 
                 <div class="sp-settings-row" style="justify-content:center; margin-top:8px;">
@@ -351,14 +211,14 @@ function openSettingsModal() {
                     </div>
                     
                     <div class="sp-settings-warning" id="sp-restore-warning" style="display:none; color:#ef4444; font-size:11px; text-align:center; margin-top:4px;">
-                        \u26A0  This will overwrite all your Settings and Statistics!
+                        ⚠️ This will overwrite all your Settings and Statistics!
                     </div>
                     
                     <!-- Inline Restore Area (Flush Right GO) -->
                     <div class="sp-settings-row" style="margin-top:4px; display:flex;">
                         <span style="margin-right:4px;">Restore:</span>
                         <div class="sp-settings-input-group" style="margin:0; flex:1; display:flex;">
-                            <input type="text" id="sp-restore-input" name="sp_restore_code_field" autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other" placeholder="Paste code" style="flex:1; width:0;" /> 
+                            <input type="text" id="sp-restore-input" placeholder="Paste code" style="flex:1; width:0;" /> 
                             <button id="sp-restore-btn" class="sp-text-btn">GO</button>
                         </div>
                     </div>
@@ -468,7 +328,6 @@ function openSettingsModal() {
     };
 
     refreshStats();
-    window.spUpdateStats = refreshStats;
 }
 
 function applyThemeLogic(themeMode) {
@@ -589,19 +448,6 @@ function implementSettingsLogic(backdrop) {
     
     const resInp = backdrop.querySelector('#sp-restore-input');
     const resWarn = backdrop.querySelector('#sp-restore-warning');
-
-    // --- PASSWORD MANAGER FIX ---
-    [nameInp, resInp].forEach(input => {
-        if(!input) return;
-        input.addEventListener('keydown', (e) => e.stopPropagation());
-        input.addEventListener('keyup', (e) => e.stopPropagation());
-        input.addEventListener('keypress', (e) => e.stopPropagation());
-        input.addEventListener('focus', (e) => e.stopPropagation());
-        input.addEventListener('click', (e) => e.stopPropagation());
-        input.addEventListener('mousedown', (e) => e.stopPropagation());
-    });
-    // ----------------------------
-
     resInp.addEventListener('input', () => {
         resWarn.style.display = resInp.value.trim().length > 0 ? 'block' : 'none';
     });
@@ -688,7 +534,7 @@ function implementSettingsLogic(backdrop) {
                     nameInp.classList.add('sp-flash-error');
                     nameInp.style.borderColor = 'red';
                     // User Request: No "TAKEN", just Red X.
-                    nameBtn.innerHTML = '<span style="color:#ef4444; font-weight:bold; font-size:16px;">\u2716</span>';
+                    nameBtn.innerHTML = '<span style="color:#ef4444; font-weight:bold; font-size:16px;">✕</span>';
                     
                     // Remove shake class after animation
                     setTimeout(() => {
@@ -700,7 +546,7 @@ function implementSettingsLogic(backdrop) {
             })
             .catch(err => {
                 nameInp.classList.add('sp-flash-error');
-                nameBtn.innerHTML = '<span style="color:#ef4444; font-weight:bold; font-size:16px;">\u2716</span>';
+                nameBtn.innerHTML = '<span style="color:#ef4444; font-weight:bold; font-size:16px;">✕</span>';
                  setTimeout(() => {
                     nameInp.classList.remove('sp-flash-error');
                     nameBtn.textContent = originalText;
@@ -779,7 +625,7 @@ async function setState(key, val) {
 }
 
 // --- Floating Bar ---
-function injectFloatingBar() {
+export function injectFloatingBar() {
     chrome.storage.local.get(['sp_theme'], res => {
         document.body.setAttribute('data-sp-theme', res.sp_theme || 'light');
     });
@@ -921,7 +767,7 @@ function injectFloatingBar() {
              
              // LOGO HANDLER: Check if BTC or Settings
              const logoZone = document.getElementById('sp-logo-zone');
-             // We can check title, or currentLogoState if we 
+             // We can check title, or currentLogoState if we import it, 
              // but title is set by setLogoState effectively.
              if (logoZone && logoZone.title && logoZone.title.includes("CLAIM")) {
                  chrome.storage.local.get(['sp_public_id', 'sp_uuid'], res => {
@@ -988,7 +834,7 @@ function startStatsLoop(bar) {
     // If we want immediate data, main.js should fire it on load.
 }
 
-function renderStats(priceEl, graphEl, data) {
+export function renderStats(priceEl, graphEl, data) {
     if (!priceEl || !graphEl) return;
     
     if (!data) {
@@ -1101,7 +947,7 @@ function renderStats(priceEl, graphEl, data) {
     `;
 }
 
-function injectSearchTable() {
+export function injectSearchTable() {
     if (!window.location.href.includes('action=search')) return;
     if (document.getElementById('sp-search-table')) return;
 
@@ -1133,17 +979,17 @@ function injectSearchTable() {
             <tr>
                 <td class="sp-search-col">
                     <div class="sp-search-header">ShadowPulse</div>
-                    <input type="text" id="sp-s-input" name="sp_search_forum" autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other" placeholder="Search Forum..." disabled style="opacity:0.5; cursor:not-allowed;" />
+                    <input type="text" id="sp-s-input" placeholder="Search Forum..." disabled style="opacity:0.5; cursor:not-allowed;" autocomplete="off" />
                     <button id="sp-s-btn" disabled style="opacity:0.5; cursor:not-allowed;">Go</button>
                 </td>
                 <td class="sp-search-col">
                     <div class="sp-search-header">Google</div>
-                    <input type="text" id="sp-g-input" name="sp_search_google" autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other" placeholder="Site Search..." />
+                    <input type="text" id="sp-g-input" placeholder="Site Search..." autocomplete="off" />
                     <button id="sp-g-btn">Go</button>
                 </td>
                 <td class="sp-search-col">
                     <div class="sp-search-header">BitList</div>
-                    <input type="text" id="sp-n-input" name="sp_search_ninja" autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other" placeholder="Advanced..." disabled style="opacity:0.5; cursor:not-allowed;" />
+                    <input type="text" id="sp-n-input" placeholder="Advanced..." disabled style="opacity:0.5; cursor:not-allowed;" autocomplete="off" />
                     <button id="sp-n-btn" disabled style="opacity:0.5; cursor:not-allowed;">Go</button>
                 </td>
             </tr>
@@ -1189,7 +1035,7 @@ function injectSearchTable() {
     }
 }
 
-async function openThemeEditor() {
+export async function openThemeEditor() {
     let editorRoot = document.getElementById('sp-theme-editor-root');
     if (editorRoot) {
         editorRoot.style.display = 'flex';
@@ -1253,7 +1099,7 @@ async function openThemeEditor() {
     const closeBtn = createEl('button', 'sp-settings-close', {
         style: 'background: none; border: none; color: #94a3b8; font-size: 16px; cursor: pointer;'
     });
-    closeBtn.innerText = '\u2715';
+    closeBtn.innerText = '✕';
     closeBtn.onclick = closeEditor;
     header.appendChild(closeBtn);
     editorRoot.appendChild(header);
@@ -1399,629 +1245,3 @@ async function openThemeEditor() {
     window.addEventListener('touchmove', onDragMove, {passive: false});
     window.addEventListener('touchend', onDragEnd);
 }
-
-
-// --- MAIN ---
-// State
-let lastPulseTimestamp = 0;
-let lastFlashTime = 0;
-let lastSelfPulseTime = 0;
-let lastGlobalPulseTime = 0;
-let userPublicId = null;
-let userUuid = null;
-
-// Settings Cache
-const SETTINGS = {
-  sp_show_pulse: true,
-  sp_flash_logo: true,
-};
-
-function stripTrustScoreStyles() {
-  const scores = document.querySelectorAll(".trustscore");
-  scores.forEach((el) => el.removeAttribute("style"));
-}
-
-function init() {
-  spLog("Initializing ShadowPulse (v1.9.89)...");
-  if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", initializeExtension);
-  } else {
-      initializeExtension();
-  }
-}
-
-function initializeExtension() {
-     chrome.storage.local.get(
-    [
-      "sp_show_pulse",
-      "sp_flash_logo",
-      "sp_theme",
-      "sp_custom_light",
-      "sp_custom_dark",
-      "sp_custom_theme",
-    ],
-    (res) => {
-      // 1. Settings & Theme (Runs Everywhere)
-      if (res.sp_show_pulse !== undefined) SETTINGS.sp_show_pulse = res.sp_show_pulse;
-      if (res.sp_flash_logo !== undefined) SETTINGS.sp_flash_logo = res.sp_flash_logo;
-
-      applyTheme(res);
-
-      // 2. Initialize Identity & Start Router
-      initUserId().then(() => {
-        setupGlobalFeatures();
-        routePageLogic();
-      });
-    }
-  );
-
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === "local") {
-      if (changes.sp_show_pulse) SETTINGS.sp_show_pulse = changes.sp_show_pulse.newValue;
-      if (changes.sp_flash_logo) SETTINGS.sp_flash_logo = changes.sp_flash_logo.newValue;
-    }
-  });
-}
-
-function applyTheme(res) {
-    let theme = res.sp_theme || "light";
-    if (theme === "custom") {
-      theme = "dark";
-      if (!res.sp_custom_dark && res.sp_custom_theme) res.sp_custom_dark = res.sp_custom_theme;
-    }
-
-    const profileVars = theme === "light" ? res.sp_custom_light : res.sp_custom_dark;
-    document.body.removeAttribute("style");
-    document.documentElement.setAttribute("data-sp-theme", theme);
-    localStorage.setItem("sp_theme_sync", theme);
-
-    if (profileVars) {
-      Object.keys(profileVars).forEach((key) => {
-        const varName = key.startsWith("--") ? key : `--sp-forum-${key.replace("_", "-")}`;
-        document.body.style.setProperty(varName, profileVars[key]);
-      });
-      document.documentElement.setAttribute("data-sp-theme", "custom");
-    }
-    stripTrustScoreStyles();
-}
-
-// --- A. Global Logic (Runs Everywhere) ---
-function setupGlobalFeatures() {
-    injectFloatingBar();
-    injectSearchTable(); 
-    startPulsePolling(); // Async Heartbeat (Does not block main thread)
-}
-
-// --- B. The Router (Gatekeeper) ---
-function routePageLogic() {
-    const href = window.location.href;
-
-    // SAFETY CHECK 1: Do NOT run logic on functional pages (Login, Post, Raffle, etc)
-    if (href.includes("action=")) {
-        spLog("Action Page detected. ShadowPulse dormant.");
-        return;
-    }
-
-    // Route: Topic Page
-    if (href.includes("topic=")) {
-        handleTopicPage();
-        return;
-    }
-
-    // Route: Board Page
-    if (href.includes("board=")) {
-        handleBoardPage();
-        return;
-    }
-}
-
-// --- C. Topic Handler ---
-function handleTopicPage() {
-    // 1. Extract Metadata
-    const meta = getPageData(); // Safe to run here
-    
-    // 2. Track View
-    chrome.runtime.sendMessage({
-        type: "TRACK_VIEW",
-        payload: {
-          topic_id: meta.topicId,
-          voter_id: userPublicId,
-          uuid: userUuid,
-          board_id: meta.boardId,
-          topic_title: meta.topicTitle,
-        },
-    });
-
-    // 3. Inject Buttons (With Robust Author Logic)
-    injectPulseButtons(meta);
-}
-
-// --- D. Board Handler ---
-function handleBoardPage() {
-    const bMatch = window.location.href.match(/board=(\d+)/);
-    if (!bMatch) return;
-    
-    const bId = bMatch[1];
-    const bTitle = document.title.replace(" - Bitcoin Forum", "").trim();
-
-    chrome.runtime.sendMessage({
-        type: "TRACK_VIEW",
-        payload: {
-          board_id: bId,
-          voter_id: userPublicId,
-          uuid: userUuid,
-          is_board_view: true,
-          board_title: bTitle,
-        },
-    });
-}
-
-// --- Helpers ---
-
-function initUserId() {
-  return new Promise((resolve) => {
-    chrome.storage.local.get(["sp_public_id", "sp_uuid"], (res) => {
-      if (!res.sp_public_id) {
-        const newId = generateRandomId();
-        const uuid = crypto.randomUUID();
-        spLog("Generated new ID:", newId);
-        chrome.storage.local.set(
-          { sp_public_id: newId, sp_uuid: uuid },
-          () => {
-            userPublicId = newId;
-            userUuid = uuid;
-            resolve();
-          }
-        );
-      } else {
-        userPublicId = res.sp_public_id;
-        if (res.sp_uuid) userUuid = res.sp_uuid;
-        resolve();
-      }
-    });
-  });
-}
-
-function getPageData() {
-  const meta = {
-    type: "topic", // We only run this on topic pages now
-    boardId: "0",
-    boardTitle: "",
-    topicId: "0",
-    topicTitle: "",
-  };
-
-  // --- STRATEGY 1: Topic Header (Most Reliable) ---
-  // Matches the blue bar: "Topic: [Title] (Read 123 times)"
-  const allHeaders = document.querySelectorAll("td.catbg, div.catbg, .header, td"); 
-  for (const el of allHeaders) {
-     const text = el.innerText || el.textContent; 
-     // Strict check to avoid false positives
-     if (text && text.trim().startsWith("Topic: ") && text.includes("(Read")) {
-         const start = text.indexOf("Topic: ") + 7;
-         const end = text.lastIndexOf("(Read");
-         if (end > start) {
-             meta.topicTitle = text.substring(start, end).trim();
-             spLog("Extracted Title from Topic Header:", meta.topicTitle);
-             break; 
-         }
-     }
-  }
-
-  // --- STRATEGY 2: Breadcrumbs (Standard SMF) ---
-  if (!meta.topicTitle) {
-      let navLinks = document.querySelectorAll(".navigate_section a");
-      if (navLinks.length === 0) {
-        const navDiv = document.querySelector("div.nav");
-        if (navDiv) navLinks = navDiv.querySelectorAll("a");
-      }
-
-      for (const link of navLinks) {
-        const href = link.href;
-        const text = link.textContent.trim();
-        const bMatch = href.match(/board=(\d+)/);
-        if (bMatch) {
-          meta.boardId = bMatch[1];
-          meta.boardTitle = text;
-        }
-        const tMatch = href.match(/topic=(\d+)/);
-        if (tMatch) {
-          meta.topicId = tMatch[1];
-          meta.topicTitle = text;
-        }
-      }
-  }
-
-  // 3. Fallbacks
-  if (meta.topicId === "0") {
-    const tMatch = window.location.href.match(/topic=(\d+)/);
-    if (tMatch) meta.topicId = tMatch[1];
-  }
-  
-  if (!meta.topicTitle) {
-      const docTitle = document.title;
-      if (docTitle) meta.topicTitle = docTitle.replace(" - Bitcoin Forum", "").trim();
-  }
-
-  return meta;
-}
-
-function injectPulseButtons(pageMeta) {
-  if (SETTINGS.sp_show_pulse === false) return;
-
-  const subjectDivs = document.querySelectorAll("#quickModForm div[id^='subject_']");
-  spLog(`Injecting Pulse Buttons. Subjects found: ${subjectDivs.length}`);
-  
-  const pageTopicId = pageMeta.topicId;
-
-  subjectDivs.forEach((subjectDiv) => {
-    const idParts = subjectDiv.id.split('_');
-    if (idParts.length < 2) return;
-    const msgId = idParts[1];
-
-    if (!msgId || msgId === "0") return;
-
-    // Find Action Container (Buttons)
-    const messageLink = Array.from(document.querySelectorAll(`a[href*="msg${msgId}"]`)).find(a => 
-        a.textContent.trim().startsWith("#") || a.name === `msg${msgId}`
-    );
-    if (!messageLink) return;
-
-    const actionContainer = messageLink.closest("div") || messageLink.parentElement;
-    const containerTd = subjectDiv.closest("td");
-    
-    let postAuthor = "Unknown";
-    let postAuthorUid = 0;
-
-    // 1. Recursive Search: Find the true Post Row
-    // Sometimes the subject div is nested; we walk up until we find the row with .poster_info
-    let parentRow = subjectDiv.closest("tr");
-    let attempts = 0;
-    while (parentRow && attempts < 5) {
-        if (parentRow.querySelector(".poster_info")) {
-            break; 
-        }
-        if (parentRow.parentElement) {
-             const nextTr = parentRow.parentElement.closest("tr");
-             if (nextTr) {
-                 parentRow = nextTr;
-                 attempts++;
-             } else {
-                 break;
-             }
-        } else {
-            break;
-        }
-    }
-
-    if (parentRow) {
-        // 2. Extract Author Info
-        const posterInfoTd = parentRow.querySelector(".poster_info");
-
-        if (posterInfoTd) {
-            // A. Profile Link (Standard User)
-            const profileLink = posterInfoTd.querySelector("a[href*='action=profile']");
-            
-            if (profileLink) {
-                 const pText = profileLink.textContent.trim();
-                 if (pText) postAuthor = pText;
-                 
-                 const uMatch = profileLink.href.match(/u=(\d+)/);
-                 if (uMatch) postAuthorUid = uMatch[1];
-            } else {
-                 // B. Guest / No-Link (Bold Name)
-                 const bTag = posterInfoTd.querySelector("b");
-                 if (bTag) {
-                     const bText = bTag.textContent.trim();
-                     if (bText) postAuthor = bText;
-                 } else {
-                     // C. Fallback: Any Link
-                     const anyLink = posterInfoTd.querySelector("a");
-                     if (anyLink) {
-                         const lText = anyLink.textContent.trim();
-                         if (lText) postAuthor = lText;
-                     }
-                 }
-            }
-        } else {
-             // D. Fallback for Themes without .poster_info class
-             if (parentRow.cells.length > 0) {
-                 const firstCell = parentRow.cells[0];
-                 const bTag = firstCell.querySelector("b");
-                 if (bTag) postAuthor = bTag.textContent.trim();
-             }
-        }
-    }
-    
-    // Title
-    let postTitle = subjectDiv.textContent.trim();
-    const subjectLink = subjectDiv.querySelector("a");
-    if (subjectLink) postTitle = subjectLink.textContent.trim();
-    if (!postTitle && pageMeta.topicTitle) postTitle = "Re: " + pageMeta.topicTitle; 
-
-    // Create & Inject Wrapper
-    const allLinks = Array.from(actionContainer.querySelectorAll("a"));
-    const meritLink = allLinks.find((a) => a.href.includes("action=merit"));
-    const quoteLink = allLinks.find((a) => a.href.includes("action=quote"));
-    
-    const wrapper = createEl("div", ["sp-pulse-wrapper"]);
-    wrapper.style.display = "inline-flex";
-    wrapper.style.flexDirection = "column"; 
-    wrapper.style.alignItems = "flex-end"; 
-    wrapper.style.verticalAlign = "top";
-    wrapper.style.marginLeft = "4px";
-
-    const btn = createPulseButton(pageTopicId, msgId, {
-      boardId: pageMeta.boardId,
-      topicTitle: pageMeta.topicTitle,
-      postTitle: postTitle,
-      postAuthor: postAuthor,
-      postAuthorUid: postAuthorUid,
-    });
-
-    if (meritLink) {
-      meritLink.parentNode.insertBefore(wrapper, meritLink);
-      wrapper.appendChild(meritLink);
-      wrapper.appendChild(btn);
-    } else if (quoteLink) {
-      quoteLink.parentNode.insertBefore(wrapper, quoteLink.nextSibling); 
-      wrapper.appendChild(btn);
-    } else {
-      actionContainer.appendChild(wrapper);
-      wrapper.appendChild(btn);
-    }
-
-    // Inject Stats Row
-    let headerDiv = containerTd.querySelector(".keyinfo") || containerTd.querySelector(".smalltext");
-    const statsRow = createEl("div", ["sp-pulse-info-row"]);
-    statsRow.dataset.msgId = msgId;
-    statsRow.style.fontSize = "11px";
-    statsRow.style.marginTop = "2px";
-    statsRow.style.color = "#1e90ff";
-    statsRow.style.fontWeight = "bold";
-
-    if (headerDiv) {
-      if (headerDiv.nextSibling) {
-        headerDiv.parentNode.insertBefore(statsRow, headerDiv.nextSibling);
-      } else {
-        headerDiv.parentNode.appendChild(statsRow);
-      }
-    } else {
-      containerTd.insertBefore(statsRow, containerTd.firstChild);
-    }
-  });
-
-  // Batch Pulse Check
-  const allBtns = document.querySelectorAll(".sp-pulse-btn");
-  const msgIds = Array.from(allBtns).map((b) => b.dataset.msgId).filter((id) => id && id !== "0");
-  if (msgIds.length > 0) {
-    const uniqueIds = [...new Set(msgIds)];
-    fetchPagePulseStatus(uniqueIds);
-  }
-}
-
-function flashPulseButton(msgId) {
-  if (SETTINGS.sp_flash_logo === false) return;
-  const btn = document.querySelector(`.sp-pulse-btn[data-msg-id="${msgId}"]`);
-  if (btn) {
-    btn.classList.remove("sp-flash");
-    void btn.offsetWidth;
-    btn.classList.add("sp-flash");
-    setTimeout(() => btn.classList.remove("sp-flash"), 1000);
-  }
-  flashLogoStub();
-}
-
-function flashLogoStub() {
-  const logoZone = document.getElementById("sp-logo-zone");
-  if (logoZone) {
-    logoZone.classList.remove("sp-flash");
-    void logoZone.offsetWidth;
-    logoZone.classList.add("sp-flash");
-    setTimeout(() => logoZone.classList.remove("sp-flash"), 1000);
-  }
-}
-
-function initLogoClick() {
-  const logoZone = document.getElementById("sp-logo-zone");
-  if (logoZone) {
-    logoZone.style.cursor = "pointer";
-    logoZone.onclick = (e) => {
-      if (document.body.classList.contains("sp-dragging")) return;
-      e.preventDefault();
-      e.stopPropagation();
-
-      if (logoZone.title.includes("CLAIM")) {
-        const claimUrl = `https://shadowpulse.live/claim.php?voter_id=${userPublicId}&uuid=${userUuid}`;
-        window.open(claimUrl, "_blank");
-      } else {
-        openSettingsModal();
-      }
-    };
-  }
-}
-
-async function fetchPagePulseStatus(msgIds) {
-  try {
-    const response = await fetch(
-      `https://shadowpulse.live/api/get_vote_status.php?msg_ids=${msgIds.join(",")}`
-    );
-    const json = await response.json();
-
-    if (json && json.success && json.data) {
-      Object.keys(json.data).forEach((msgId) => {
-        const stats = json.data[msgId];
-        if (stats.user_count > 0) {
-          const statsRow = document.querySelector(`.sp-pulse-info-row[data-msg-id="${msgId}"]`);
-          if (statsRow) {
-            statsRow.textContent = `Pulsed by ${stats.user_count} user${stats.user_count === 1 ? "" : "s"}`;
-            statsRow.style.fontStyle = "italic";
-            statsRow.style.fontSize = "11px";
-          }
-        }
-      });
-    }
-  } catch (e) {
-    console.error("Batch Pulse Fetch Error:", e);
-  }
-}
-
-function createPulseButton(topicId, msgId, meta) {
-  const btnPulse = createEl("a", ["sp-pulse-btn"]);
-  btnPulse.href = "#";
-  btnPulse.textContent = "+Pulse";
-  btnPulse.title = `Give Pulse as ${userPublicId}`;
-  btnPulse.dataset.topicId = topicId;
-  btnPulse.dataset.msgId = msgId;
-
-  btnPulse.addEventListener("click", async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    btnPulse.classList.add("sp-flash");
-    setTimeout(() => btnPulse.classList.remove("sp-flash"), 1000);
-    lastSelfPulseTime = Date.now();
-    spLog(`Pulsing Topic:${topicId} Msg:${msgId} as ${userPublicId}...`);
-
-    try {
-      const payload = {
-        voter_id: userPublicId,
-        uuid: userUuid,
-        msg_id: msgId,
-        topic_id: topicId,
-        type: "pulse",
-        board_id: meta.boardId,
-        topic_title: meta.topicTitle,
-        post_title: meta.postTitle,
-        post_author: meta.postAuthor,
-        post_author_uid: meta.postAuthorUid,
-      };
-
-      const response = await chrome.runtime.sendMessage({
-        type: "SEND_PULSE",
-        payload: payload,
-      });
-
-      if (response && response.success) {
-        spLog("Pulse Sent (BG Success)");
-        const statsRow = document.querySelector(`.sp-pulse-info-row[data-msg-id="${msgId}"]`);
-        if (statsRow) {
-          let text = statsRow.textContent;
-          let match = text.match(/(\d+)/);
-          let count = match ? parseInt(match[1]) : 0;
-          let newCount = count + 1;
-          statsRow.textContent = `Pulsed by ${newCount} user${newCount === 1 ? "" : "s"}`;
-        }
-      } else {
-        btnPulse.classList.remove("sp-flash");
-        void btnPulse.offsetWidth;
-        btnPulse.classList.add("sp-flash-error");
-        setTimeout(() => btnPulse.classList.remove("sp-flash-error"), 1000);
-      }
-    } catch (err) {
-      console.error("Pulse Message Error:", err);
-      btnPulse.classList.remove("sp-flash");
-      void btnPulse.offsetWidth;
-      btnPulse.classList.add("sp-flash-error");
-      setTimeout(() => btnPulse.classList.remove("sp-flash-error"), 1000);
-    }
-  });
-
-  return btnPulse;
-}
-
-// --- Polling Logic ---
-async function heartbeat() {
-  // A. Global Pulse Check (Logo & BTC & Stats)
-  try {
-    const res = await chrome.runtime.sendMessage({ 
-        type: "GET_LATEST_PULSE",
-        voter_id: userPublicId 
-    });
-    if (res && res.data) {
-      if (res.data.price_stats) {
-          document.dispatchEvent(new CustomEvent('sp-heartbeat', { detail: res.data.price_stats }));
-      } else {
-          // Fallback Fetch
-          chrome.runtime.sendMessage({ type: "FETCH_STATS" })
-            .then(res => {
-                if (res && res.success && res.data) {
-                    document.dispatchEvent(new CustomEvent('sp-heartbeat', { detail: res.data }));
-                }
-            })
-            .catch(() => {});
-      }
-
-      const val = res.data.btc_active;
-      const isBtc = val === 1 || val === "1" || val === true;
-      if (isBtc) spLog("BTC Active Triggered via Polling!");
-
-      setLogoState(isBtc);
-
-      if (!isBtc && SETTINGS.sp_flash_logo) {
-        const globalTime = parseFloat(res.data.last_pulse);
-        const lastAuthor = res.data.last_pulse_by; 
-
-        if (lastGlobalPulseTime === 0) {
-          lastGlobalPulseTime = globalTime;
-        } else if (globalTime > lastGlobalPulseTime) {
-          lastGlobalPulseTime = globalTime;
-          
-          // STRICT SELF-FLASH CHECK:
-          // If the pulse came from ME (userPublicId), do NOT flash the logo.
-          // Only flash if it came from someone else.
-          if (lastAuthor !== userPublicId) {
-             flashLogoStub();
-          }
-        }
-      }
-    }
-  } catch (e) {}
-
-  // B. Local Pulse Check (One Random Button)
-  // Only runs if buttons exist (Topic Pages)
-  const visibleBtns = Array.from(document.querySelectorAll(".sp-pulse-btn"));
-  if (visibleBtns.length > 0) {
-      for (let i = 0; i < 1; i++) {
-        const btn = visibleBtns[Math.floor(Math.random() * visibleBtns.length)];
-        const msgId = btn.dataset.msgId;
-        if (!msgId || msgId === "0") continue;
-
-        try {
-          const response = await chrome.runtime.sendMessage({
-            type: "GET_VOTE_STATUS",
-            payload: { msg_id: msgId },
-          });
-
-          if (response && response.data) {
-            const { last_pulse, user_count } = response.data;
-            if (user_count > 0) {
-              const statsRow = document.querySelector(`.sp-pulse-info-row[data-msg-id="${msgId}"]`);
-              if (statsRow) statsRow.textContent = `Pulsed by ${user_count} user${user_count === 1 ? "" : "s"}`;
-            }
-
-            const pulseTime = parseFloat(last_pulse);
-            if (pulseTime > lastPulseTimestamp) {
-              lastPulseTimestamp = pulseTime; 
-              const now = Date.now();
-              if (now - lastFlashTime > CONFIG.FLASH_COOLDOWN && now - lastSelfPulseTime > 3000) {
-                flashPulseButton(msgId);
-                lastFlashTime = now;
-              }
-            }
-          }
-        } catch (e) {}
-      }
-  }
-
-  setTimeout(heartbeat, CONFIG.POLLING_INTERVAL);
-}
-
-function startPulsePolling() {
-  heartbeat();
-}
-; init();
-
-})();
-
-
