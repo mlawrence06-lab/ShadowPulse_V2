@@ -30,7 +30,7 @@ function stripTrustScoreStyles() {
 }
 
 export function init() {
-  spLog("Initializing ShadowPulse (v1.9.88)...");
+  spLog("Initializing ShadowPulse (v1.9.89)...");
   if (document.readyState === "loading") {
       document.addEventListener("DOMContentLoaded", initializeExtension);
   } else {

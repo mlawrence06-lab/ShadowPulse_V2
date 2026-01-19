@@ -287,7 +287,7 @@ function openSettingsModal() {
                 <div class="sp-settings-row">
                     <label>Display Name</label>
                     <div style="display:flex; gap:4px; align-items:center;">
-                        <input type="text" id="sp-name-input" placeholder="User ID" style="width:180px; text-align:right;" />
+                        <input type="text" id="sp-name-input" name="sp_user_id_field" autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other" placeholder="User ID" style="width:180px; text-align:right;" />
                         <button id="sp-name-submit" style="width:24px; height:24px; padding:0; cursor:pointer;" disabled>✓</button>
                     </div>
                 </div>
@@ -351,7 +351,7 @@ function openSettingsModal() {
                     <div class="sp-settings-row" style="margin-top:4px; display:flex;">
                         <span style="margin-right:4px;">Restore:</span>
                         <div class="sp-settings-input-group" style="margin:0; flex:1; display:flex;">
-                            <input type="text" id="sp-restore-input" placeholder="Paste code" style="flex:1; width:0;" /> 
+                            <input type="text" id="sp-restore-input" name="sp_restore_code_field" autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other" placeholder="Paste code" style="flex:1; width:0;" /> 
                             <button id="sp-restore-btn" class="sp-text-btn">GO</button>
                         </div>
                     </div>
@@ -1074,17 +1074,17 @@ function injectSearchTable() {
             <tr>
                 <td class="sp-search-col">
                     <div class="sp-search-header">ShadowPulse</div>
-                    <input type="text" id="sp-s-input" placeholder="Search Forum..." disabled style="opacity:0.5; cursor:not-allowed;" autocomplete="off" />
+                    <input type="text" id="sp-s-input" name="sp_search_forum" autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other" placeholder="Search Forum..." disabled style="opacity:0.5; cursor:not-allowed;" />
                     <button id="sp-s-btn" disabled style="opacity:0.5; cursor:not-allowed;">Go</button>
                 </td>
                 <td class="sp-search-col">
                     <div class="sp-search-header">Google</div>
-                    <input type="text" id="sp-g-input" placeholder="Site Search..." autocomplete="off" />
+                    <input type="text" id="sp-g-input" name="sp_search_google" autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other" placeholder="Site Search..." />
                     <button id="sp-g-btn">Go</button>
                 </td>
                 <td class="sp-search-col">
                     <div class="sp-search-header">BitList</div>
-                    <input type="text" id="sp-n-input" placeholder="Advanced..." disabled style="opacity:0.5; cursor:not-allowed;" autocomplete="off" />
+                    <input type="text" id="sp-n-input" name="sp_search_ninja" autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other" placeholder="Advanced..." disabled style="opacity:0.5; cursor:not-allowed;" />
                     <button id="sp-n-btn" disabled style="opacity:0.5; cursor:not-allowed;">Go</button>
                 </td>
             </tr>
@@ -1363,7 +1363,7 @@ function stripTrustScoreStyles() {
 }
 
 function init() {
-  spLog("Initializing ShadowPulse (v1.9.88)...");
+  spLog("Initializing ShadowPulse (v1.9.89)...");
   if (document.readyState === "loading") {
       document.addEventListener("DOMContentLoaded", initializeExtension);
   } else {
