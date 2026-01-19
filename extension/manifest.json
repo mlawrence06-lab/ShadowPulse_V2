@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ShadowPulse",
-  "version": "1.9.84",
+  "version": "1.9.88",
   "description": "BitcoinTalk Alternative Recognition Tool",
   "permissions": ["storage"],
   "host_permissions": [
@@ -21,7 +21,7 @@
     },
     {
       "matches": ["*://bitcointalk.org/*"],
-      "js": ["scripts/loader.js"],
+      "js": ["scripts/bundle.js"],
       "css": ["style/main.css"],
       "run_at": "document_start"
     }
