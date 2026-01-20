@@ -1,0 +1,135 @@
+/* === ShadowPulse Mobile Mode (sp-mobile) === */
+/* Only active on screens smaller than 768px */
+
+@media (max-width: 768px) {
+  /* 1. Global Reset for Mobile */
+  body {
+    font-size: 14px;
+    line-height: 1.5;
+    overflow-x: hidden; /* Prevent horizontal scroll */
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Hide non-essential desktop elements */
+  .sp-mobile-hidden {
+    display: none !important;
+  }
+
+  /* 2. Layout Transformation (Tables to Flex/Grid) */
+  /* Force tables to behave like blocks */
+  table,
+  thead,
+  tbody,
+  th,
+  td,
+  tr {
+    display: block;
+  }
+
+  /* Hide table headers (thead) but keep accessibility if needed (visually hidden) */
+  thead tr {
+    position: absolute;
+    top: -9999px;
+    left: -9999px;
+  }
+
+  /* 3. Navigation Bar (Top Menu) */
+  /* Simplify the existing menu or provide a toggle */
+  /* This targets the standard SMF menu container */
+  #main_menu {
+    display: flex;
+    flex-wrap: wrap;
+    padding: 5px;
+    justify-content: center;
+    background: var(--sp-bg-elevated, #f0f0f0);
+  }
+
+  #main_menu td {
+    display: inline-block;
+    border: none !important;
+    padding: 2px 5px !important;
+  }
+
+  /* 4. Board/Topic List (Card View) */
+  /* Target the main topic listing tables */
+  .tborder {
+    border: none !important;
+    background: transparent !important;
+  }
+
+  .windowbg,
+  .windowbg2,
+  .windowbg3 {
+    margin-bottom: 10px;
+    border: 1px solid var(--sp-border, #ccc);
+    border-radius: 8px;
+    padding: 10px;
+    background: var(--sp-bg, #fff) !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  }
+
+  /* Subject Line */
+  td.subject {
+    font-size: 16px;
+    font-weight: bold;
+    padding: 0 !important;
+    margin-bottom: 4px;
+    border: none !important;
+  }
+
+  /* Stats (Replies/Views) */
+  td.stats {
+    font-size: 12px;
+    color: var(--sp-text-soft, #666);
+    padding: 0 !important;
+    border: none !important;
+    display: inline-block !important;
+    margin-right: 10px;
+  }
+
+  /* 5. Posts (Topic Display) */
+  /* Stack User Profile above Post Content */
+  .post_wrapper {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* User Info (Left side originally) */
+  .poster_info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid var(--sp-border, #eee);
+    padding-bottom: 8px;
+    margin-bottom: 8px;
+    width: 100% !important;
+  }
+
+  /* Post Content (Right side originally) */
+  .post_content {
+    width: 100% !important;
+  }
+
+  /* Hide Signatures on Mobile to save space (Optional) */
+  .signature {
+    display: none;
+  }
+
+  /* 6. Utility Overrides */
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Adjust Input fields */
+  input[type="text"],
+  input[type="password"],
+  textarea,
+  select {
+    width: 100%;
+    box-sizing: border-box;
+    font-size: 16px; /* Prevents iOS zoom on focus */
+    padding: 8px;
+  }
+}

@@ -1,6 +1,51 @@
 ﻿(function() {
 "use strict";
 
+    // === ShadowPulse Mobile Init ===
+    function spTryInitMobile() {
+        chrome.storage.local.get(['sp_mobile_mode'], res => {
+            // Default to FALSE (Off by default as requested)
+            if (res.sp_mobile_mode !== true) return;
+
+            const runMobileLogic = () => {
+                try {
+                    // 1. Inject Viewport
+                    if (!document.querySelector('meta[name="viewport"]')) {
+                        const vp = document.createElement('meta');
+                        vp.name = "viewport";
+                        vp.content = "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no";
+                        // Safety check for head
+                        if (document.head) {
+                            document.head.appendChild(vp);
+                        } else {
+                            document.documentElement.appendChild(vp);
+                        }
+                    }
+
+                    // 2. Class Toggle
+                    const infoBody = document.body || document.documentElement;
+                    const toggleMobile = () => {
+                        if (window.innerWidth <= 768) {
+                            infoBody.classList.add('sp-mobile-view');
+                        } else {
+                            infoBody.classList.remove('sp-mobile-view');
+                        }
+                    };
+                    toggleMobile();
+                    window.addEventListener('resize', toggleMobile);
+                } catch(e) { console.error("SP Mobile Init Error", e); }
+            };
+
+            // Wait for body/head if needed
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', runMobileLogic);
+            } else {
+                runMobileLogic();
+            }
+        });
+    }
+    spTryInitMobile();
+
 // --- CONFIG ---
 const CONFIG = {
     API_BASE_URL: "https://shadowpulse.live/api",
@@ -246,6 +291,15 @@ function openSettingsModal() {
                             <option value="dark">Dark</option>
                         </select>
                     </div>
+                </div>
+
+                <!-- Mobile Mode -->
+                <div class="sp-settings-row">
+                    <label>Mobile Mode</label>
+                    <select id="sp-mobile-mode-select">
+                        <option value="false">Off</option>
+                        <option value="true">On</option>
+                    </select>
                 </div>
 
                 <!-- Show Graph -->
@@ -518,8 +572,9 @@ function implementSettingsLogic(backdrop) {
     const btcSel = backdrop.querySelector('#sp-btc-select');
     const pulseSel = backdrop.querySelector('#sp-show-pulse-select');
     const flashSel = backdrop.querySelector('#sp-flash-logo-select');
+    const mobileSel = backdrop.querySelector('#sp-mobile-mode-select');
 
-    chrome.storage.local.get(['sp_theme', 'sp_btc_source', 'sp_show_graph', 'sp_show_pulse', 'sp_flash_logo'], res => {
+    chrome.storage.local.get(['sp_theme', 'sp_btc_source', 'sp_show_graph', 'sp_show_pulse', 'sp_flash_logo', 'sp_mobile_mode'], res => {
         let theme = res.sp_theme || 'light';
         if (theme === 'custom') theme = 'dark'; 
         themeSel.value = theme;
@@ -531,12 +586,26 @@ function implementSettingsLogic(backdrop) {
         btcSel.value = res.sp_btc_source || 'binance';
         pulseSel.value = (res.sp_show_pulse !== false) ? "true" : "false";
         flashSel.value = (res.sp_flash_logo !== false) ? "true" : "false";
+        
+        // Mobile Mode (Default False)
+        mobileSel.value = (res.sp_mobile_mode === true) ? "true" : "false";
     });
 
     themeSel.addEventListener('change', (e) => {
         const val = e.target.value;
         chrome.storage.local.set({ sp_theme: val });
         applyThemeLogic(val);
+    });
+    
+    // Mobile Mode Listener
+    mobileSel.addEventListener('change', (e) => {
+        const isMobile = e.target.value === 'true';
+        chrome.storage.local.set({ sp_mobile_mode: isMobile }, () => {
+             // Reload to apply/remove changes properly
+             if(confirm("Reload page to apply Mobile Mode changes?")) {
+                 window.location.reload();
+             }
+        });
     });
     
     graphSel.addEventListener('change', (e) => {
