@@ -1,38 +1,57 @@
 {
-  "manifest_version": 3,
-  "name": "ShadowPulse",
-  "version": "1.9.99",
-  "description": "BitcoinTalk Alternative Recognition Tool",
-  "permissions": ["storage"],
-  "host_permissions": [
-    "*://bitcointalk.org/*",
-    "https://shadowpulsev2.b-cdn.net/*",
-    "https://shadowpulse.live/*"
-  ],
-  "background": {
-    "service_worker": "scripts/background.js",
-    "type": "module"
-  },
-  "content_scripts": [
-    {
-      "matches": ["*://bitcointalk.org/*"],
-      "js": ["scripts/theme_boot.js"],
-      "run_at": "document_start"
-    },
-    {
-      "matches": ["*://bitcointalk.org/*"],
-      "js": ["scripts/bundle.js"],
-      "css": ["style/main.css"],
-      "run_at": "document_start"
-    }
-  ],
-  "web_accessible_resources": [
-    {
-      "resources": [
-        "scripts/config.js",
-        "style/main.css"
-      ],
-      "matches": ["*://bitcointalk.org/*"]
-    }
-  ]
+    "manifest_version":  3,
+    "name":  "ShadowPulse",
+    "version":  "1.10.41",
+    "description":  "BitcoinTalk Alternative Recognition Tool",
+    "permissions":  [
+                        "storage"
+                    ],
+    "host_permissions":  [
+                             "*://bitcointalk.org/*",
+                             "https://shadowpulsev2.b-cdn.net/*",
+                             "https://shadowpulse.live/*"
+                         ],
+    "background":  {
+                       "service_worker":  "scripts/background.js",
+                       "type":  "module"
+                   },
+    "content_scripts":  [
+                            {
+                                "matches":  [
+                                                "*://bitcointalk.org/*"
+                                            ],
+                                "js":  [
+                                           "scripts/theme_boot.js"
+                                       ],
+                                "run_at":  "document_start"
+                            },
+                            {
+                                "matches":  [
+                                                "*://bitcointalk.org/*"
+                                            ],
+                                "js":  [
+                                           "scripts/utils.js",
+                                           "scripts/ui.js",
+                                           "scripts/faucet.js",
+                                           "scripts/stats.js",
+                                           "scripts/pulse.js",
+                                           "scripts/main.js"
+                                       ],
+                                "css":  [
+                                            "style/main.css"
+                                        ],
+                                "run_at":  "document_start"
+                            }
+                        ],
+    "web_accessible_resources":  [
+                                     {
+                                         "resources":  [
+                                                           "scripts/config.js",
+                                                           "style/main.css"
+                                                       ],
+                                         "matches":  [
+                                                         "*://bitcointalk.org/*"
+                                                     ]
+                                     }
+                                 ]
 }

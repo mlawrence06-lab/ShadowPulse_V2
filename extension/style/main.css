@@ -13,13 +13,39 @@
 }
 
 /* Dark Mode Injection (Applied via attribute) */
+/* Shake Animation */
+@keyframes spShake {
+  0% {
+    transform: rotate(0deg);
+  }
+  20% {
+    transform: rotate(-15deg);
+  }
+  40% {
+    transform: rotate(15deg);
+  }
+  60% {
+    transform: rotate(-10deg);
+  }
+  80% {
+    transform: rotate(5deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+.sp-shake {
+  animation: spShake 0.5s ease-in-out;
+}
+
 [data-sp-theme="dark"] {
-  --sp-bg: #0f172a;           /* Slate 900 */
-  --sp-bg-elevated: #1e293b;  /* Slate 800 */
-  --sp-border: #334155;       /* Slate 700 */
-  --sp-text: #f1f5f9;         /* Slate 100 */
-  --sp-text-soft: #94a3b8;    /* Slate 400 */
-  --sp-accent: #38bdf8;       /* Sky 400 */
+  --sp-bg: #0f172a; /* Slate 900 */
+  --sp-bg-elevated: #1e293b; /* Slate 800 */
+  --sp-border: #334155; /* Slate 700 */
+  --sp-text: #f1f5f9; /* Slate 100 */
+  --sp-text-soft: #94a3b8; /* Slate 400 */
+  --sp-accent: #38bdf8; /* Sky 400 */
   --sp-accent-soft: rgba(56, 189, 248, 0.15);
 
   /* Forum Overrides for Standard Dark Mode */
@@ -38,53 +64,78 @@
   color-scheme: dark;
 }
 
-[data-sp-theme="dark"] ::-webkit-scrollbar { width: 12px; }
-[data-sp-theme="dark"] ::-webkit-scrollbar-track { background: var(--sp-forum-bg); }
-[data-sp-theme="dark"] ::-webkit-scrollbar-thumb { 
-    background-color: var(--sp-forum-border); 
-    border-radius: 6px; 
-    border: 3px solid var(--sp-forum-bg); 
+[data-sp-theme="dark"] ::-webkit-scrollbar {
+  width: 12px;
+}
+[data-sp-theme="dark"] ::-webkit-scrollbar-track {
+  background: var(--sp-forum-bg);
+}
+[data-sp-theme="dark"] ::-webkit-scrollbar-thumb {
+  background-color: var(--sp-forum-border);
+  border-radius: 6px;
+  border: 3px solid var(--sp-forum-bg);
 }
 
 /* Ensure these standard dark variables are applied when data-sp-theme="dark" is present on body */
 html[data-sp-theme="dark"],
 [data-sp-theme="dark"] body {
-    background-color: var(--sp-forum-bg) !important;
-    color: var(--sp-forum-text) !important;
-    min-height: 100vh;
+  background-color: var(--sp-forum-bg) !important;
+  color: var(--sp-forum-text) !important;
+  min-height: 100vh;
 }
-[data-sp-theme="dark"] a:link, [data-sp-theme="dark"] a:visited { color: var(--sp-forum-link) !important; }
-[data-sp-theme="dark"] .windowbg { background-color: var(--sp-forum-window-bg) !important; color: var(--sp-forum-text) !important;}
-[data-sp-theme="dark"] .windowbg2 { background-color: var(--sp-forum-window-bg2, #182234) !important; color: var(--sp-forum-text) !important;}
-[data-sp-theme="dark"] .windowbg3 { background-color: var(--sp-forum-window-bg) !important; color: var(--sp-forum-text) !important;}
-[data-sp-theme="dark"] .catbg, [data-sp-theme="dark"] .catbg2, [data-sp-theme="dark"] tr.catbg td, [data-sp-theme="dark"] tr.catbg2 td {
-    background-color: var(--sp-forum-cat-bg) !important; color: var(--sp-forum-cat-text) !important; background-image: none !important;
+[data-sp-theme="dark"] a:link,
+[data-sp-theme="dark"] a:visited {
+  color: var(--sp-forum-link) !important;
 }
-[data-sp-theme="dark"] .titlebg, [data-sp-theme="dark"] .titlebg2, [data-sp-theme="dark"] tr.titlebg td, [data-sp-theme="dark"] tr.titlebg2 td {
-    background-color: var(--sp-forum-title-bg) !important; color: var(--sp-forum-text) !important; background-image: none !important;
+[data-sp-theme="dark"] .windowbg {
+  background-color: var(--sp-forum-window-bg) !important;
+  color: var(--sp-forum-text) !important;
 }
-[data-sp-theme="dark"] .bordercolor { background-color: var(--sp-forum-border) !important; }
-[data-sp-theme="dark"] .tborder { background-color: var(--sp-forum-border) !important; border: 1px solid var(--sp-forum-border) !important; }
-[data-sp-theme="dark"] .quote {
-    background-color: var(--sp-forum-quote-bg) !important; border: 1px solid var(--sp-forum-border) !important; color: var(--sp-forum-text) !important;
+[data-sp-theme="dark"] .windowbg2 {
+  background-color: var(--sp-forum-window-bg2, #182234) !important;
+  color: var(--sp-forum-text) !important;
 }
-[data-sp-theme="dark"] .quote {
-    background-color: var(--sp-forum-quote-bg) !important; border: 1px solid var(--sp-forum-border) !important; color: var(--sp-forum-text) !important;
+[data-sp-theme="dark"] .windowbg3 {
+  background-color: var(--sp-forum-window-bg) !important;
+  color: var(--sp-forum-text) !important;
+}
+[data-sp-theme="dark"] .catbg,
+[data-sp-theme="dark"] .catbg2,
+[data-sp-theme="dark"] tr.catbg td,
+[data-sp-theme="dark"] tr.catbg2 td {
+  background-color: var(--sp-forum-cat-bg) !important;
+  color: var(--sp-forum-cat-text) !important;
+  background-image: none !important;
+}
+[data-sp-theme="dark"] .titlebg,
+[data-sp-theme="dark"] .titlebg2,
+[data-sp-theme="dark"] tr.titlebg td,
+[data-sp-theme="dark"] tr.titlebg2 td {
+  background-color: var(--sp-forum-title-bg) !important;
+  color: var(--sp-forum-text) !important;
+  background-image: none !important;
+}
+[data-sp-theme="dark"] .bordercolor {
+  background-color: var(--sp-forum-border) !important;
+}
+[data-sp-theme="dark"] .tborder {
+  background-color: var(--sp-forum-border) !important;
+  border: 1px solid var(--sp-forum-border) !important;
 }
 /* Target ALL inputs/buttons (excluding checkbox/radio which are native) */
-[data-sp-theme="dark"] textarea, 
+[data-sp-theme="dark"] textarea,
 [data-sp-theme="dark"] select,
 [data-sp-theme="dark"] button,
 [data-sp-theme="dark"] input:not([type="checkbox"]):not([type="radio"]) {
-    background-color: var(--sp-forum-input-bg) !important; 
-    color: var(--sp-forum-text) !important; 
-    border: 1px solid var(--sp-forum-border) !important;
+  background-color: var(--sp-forum-input-bg) !important;
+  color: var(--sp-forum-text) !important;
+  border: 1px solid var(--sp-forum-border) !important;
 }
 
 /* Post Content & Utility Text Fix */
 /* Post Content & Utility Text Fix */
-[data-sp-theme="dark"] .post, 
-[data-sp-theme="dark"] .inner, 
+[data-sp-theme="dark"] .post,
+[data-sp-theme="dark"] .inner,
 [data-sp-theme="dark"] .keyinfo,
 [data-sp-theme="dark"] .smalltext,
 [data-sp-theme="dark"] .middletext,
@@ -94,23 +145,86 @@ html[data-sp-theme="dark"],
 [data-sp-theme="dark"] #preview_subject,
 [data-sp-theme="dark"] #topic_summary,
 [data-sp-theme="dark"] td[id^="msg"] {
-    background-color: var(--sp-forum-bg) !important; /* Force Dark BG */
-    color: var(--sp-forum-text) !important;
+  background-color: var(--sp-forum-bg) !important; /* Force Dark BG */
+  color: var(--sp-forum-text) !important;
+}
+
+/* --- Private Message Dark Mode Fix --- */
+[data-sp-theme="dark"] form[action*="action=pm"] .windowbg,
+[data-sp-theme="dark"] form[action*="action=pm"] .windowbg2,
+[data-sp-theme="dark"] form[action*="action=pm"] td[class^="windowbg"],
+[data-sp-theme="dark"] form[action*="action=pm"] .signature {
+  background-color: var(--sp-forum-bg) !important;
+  color: var(--sp-forum-text) !important;
+}
+
+/* IMPORTANT: Quote styling MUST come after general td rule to override */
+[data-sp-theme="dark"] .quote,
+[data-sp-theme="dark"] .quoteheader,
+[data-sp-theme="dark"] blockquote,
+[data-sp-theme="dark"] div.quote,
+[data-sp-theme="dark"] td.quote {
+  background-color: var(--sp-forum-quote-bg) !important;
+  border: 1px solid var(--sp-forum-border) !important;
+  color: var(--sp-forum-text) !important;
+}
+/* Quote nested elements - MUST override general td rule */
+[data-sp-theme="dark"] .quote div,
+[data-sp-theme="dark"] .quote table,
+[data-sp-theme="dark"] .quote td,
+[data-sp-theme="dark"] .quote tr {
+  background-color: var(--sp-forum-quote-bg) !important;
+  color: var(--sp-forum-text) !important;
+}
+
+/* Additional specific content containers */
+[data-sp-theme="dark"] #bodyarea,
+[data-sp-theme="dark"] #main_content_section {
+  background-color: var(--sp-forum-bg) !important;
+  color: var(--sp-forum-text) !important;
 }
 
 /* Trust Score Fix for Dark Mode */
 [data-sp-theme="dark"] .trustscore {
-    color: inherit !important;
+  color: inherit !important;
+}
+
+/* Code Blocks and Pre Elements */
+[data-sp-theme="dark"] code,
+[data-sp-theme="dark"] pre,
+[data-sp-theme="dark"] .code,
+[data-sp-theme="dark"] .codeheader {
+  background-color: var(--sp-forum-quote-bg) !important;
+  color: var(--sp-forum-text) !important;
+  border-color: var(--sp-forum-border) !important;
+}
+
+/* Additional Forum Elements */
+[data-sp-theme="dark"] .signature,
+[data-sp-theme="dark"] .moderatorbar,
+[data-sp-theme="dark"] .errorbox,
+[data-sp-theme="dark"] .infobox {
+  background-color: var(--sp-forum-window-bg) !important;
+  color: var(--sp-forum-text) !important;
+  border-color: var(--sp-forum-border) !important;
 }
 
 /* Navigation & Menu Fixes */
-[data-sp-theme="dark"] .maintab_back, [data-sp-theme="dark"] .maintab_first, [data-sp-theme="dark"] .maintab_last, 
-[data-sp-theme="dark"] .maintab_active_back, [data-sp-theme="dark"] .maintab_active_first, [data-sp-theme="dark"] .maintab_active_last,
-[data-sp-theme="dark"] .mirrortab_back, [data-sp-theme="dark"] .mirrortab_first, [data-sp-theme="dark"] .mirrortab_last, 
-[data-sp-theme="dark"] .mirrortab_active_back, [data-sp-theme="dark"] .mirrortab_active_first, [data-sp-theme="dark"] .mirrortab_active_last {
-    background-color: var(--sp-forum-cat-bg) !important;
-    background-image: none !important;
-    color: var(--sp-forum-cat-text) !important;
+[data-sp-theme="dark"] .maintab_back,
+[data-sp-theme="dark"] .maintab_first,
+[data-sp-theme="dark"] .maintab_last,
+[data-sp-theme="dark"] .maintab_active_back,
+[data-sp-theme="dark"] .maintab_active_first,
+[data-sp-theme="dark"] .maintab_active_last,
+[data-sp-theme="dark"] .mirrortab_back,
+[data-sp-theme="dark"] .mirrortab_first,
+[data-sp-theme="dark"] .mirrortab_last,
+[data-sp-theme="dark"] .mirrortab_active_back,
+[data-sp-theme="dark"] .mirrortab_active_first,
+[data-sp-theme="dark"] .mirrortab_active_last {
+  background-color: var(--sp-forum-cat-bg) !important;
+  background-image: none !important;
+  color: var(--sp-forum-cat-text) !important;
 }
 
 /* === CUSTOM THEME ENGINE (Overrides SMF) === */
@@ -121,9 +235,12 @@ html[data-sp-theme="custom"],
   --sp-bg-elevated: var(--sp-forum-window-bg, #f0f0f0); /* Settings Window BG */
   --sp-border: var(--sp-forum-border, #cccccc);
   --sp-text: var(--sp-forum-text, #000000);
-  --sp-text-soft: var(--sp-forum-cat-text, #444444); /* Use Cat Text for soft contrast? Or just Text */
+  --sp-text-soft: var(
+    --sp-forum-cat-text,
+    #444444
+  ); /* Use Cat Text for soft contrast? Or just Text */
   --sp-accent: var(--sp-forum-link, #1e90ff);
-  
+
   background-color: var(--sp-forum-bg, #ffffff) !important;
   color: var(--sp-forum-text, #000000) !important;
   min-height: 100vh;
@@ -134,7 +251,7 @@ html[data-sp-theme="custom"],
 }
 
 /* Post Content & Utility Text Fix - Custom */
-[data-sp-theme="custom"] .inner, 
+[data-sp-theme="custom"] .inner,
 [data-sp-theme="custom"] .keyinfo,
 [data-sp-theme="custom"] .smalltext,
 [data-sp-theme="custom"] .middletext,
@@ -164,8 +281,7 @@ html[data-sp-theme="custom"] td[id^="msg"],      /* Topic Summary Cells */
 html[data-sp-theme="custom"] #preview_body,       /* Post Preview Body */
 html[data-sp-theme="custom"] #preview_subject,    /* Post Preview Subject */
 html[data-sp-theme="custom"] #preview_section,    /* Preview Container */
-html[data-sp-theme="custom"] #topic_summary       /* Topic Summary Container */
-{
+html[data-sp-theme="custom"] #topic_summary       /* Topic Summary Container */ {
   background: var(--sp-forum-window-bg, #f0f0f0) !important;
   background-image: none !important;
   color: var(--sp-forum-text, #000000) !important;
@@ -201,10 +317,42 @@ html[data-sp-theme="custom"] .tborder {
 }
 
 /* Quotes */
-html[data-sp-theme="custom"] .quote {
+html[data-sp-theme="custom"] .quote,
+html[data-sp-theme="custom"] .quoteheader,
+html[data-sp-theme="custom"] blockquote,
+html[data-sp-theme="custom"] div.quote,
+html[data-sp-theme="custom"] td.quote {
   background-color: var(--sp-forum-quote-bg, #e7e7e7) !important;
   border: 1px solid var(--sp-forum-border, #000000) !important;
   color: var(--sp-forum-text, #000000) !important;
+}
+/* Quote nested elements */
+html[data-sp-theme="custom"] .quote div,
+html[data-sp-theme="custom"] .quote table,
+html[data-sp-theme="custom"] .quote td,
+html[data-sp-theme="custom"] .quote tr {
+  background-color: var(--sp-forum-quote-bg, #e7e7e7) !important;
+  color: var(--sp-forum-text, #000000) !important;
+}
+
+/* Code Blocks and Pre Elements */
+html[data-sp-theme="custom"] code,
+html[data-sp-theme="custom"] pre,
+html[data-sp-theme="custom"] .code,
+html[data-sp-theme="custom"] .codeheader {
+  background-color: var(--sp-forum-quote-bg, #e7e7e7) !important;
+  color: var(--sp-forum-text, #000000) !important;
+  border-color: var(--sp-forum-border, #888) !important;
+}
+
+/* Additional Forum Elements */
+html[data-sp-theme="custom"] .signature,
+html[data-sp-theme="custom"] .moderatorbar,
+html[data-sp-theme="custom"] .errorbox,
+html[data-sp-theme="custom"] .infobox {
+  background-color: var(--sp-forum-window-bg, #f0f0f0) !important;
+  color: var(--sp-forum-text, #000000) !important;
+  border-color: var(--sp-forum-border, #888) !important;
 }
 
 /* Transparent Content Wrappers */
@@ -225,12 +373,13 @@ html[data-sp-theme="custom"] .trustscore {
 html[data-sp-theme="custom"] textarea,
 html[data-sp-theme="custom"] input[type="text"],
 html[data-sp-theme="custom"] select {
-  background-color: var(--sp-forum-input-bg, var(--sp-forum-window-bg, #ffffff)) !important;
+  background-color: var(
+    --sp-forum-input-bg,
+    var(--sp-forum-window-bg, #ffffff)
+  ) !important;
   color: var(--sp-forum-text, #000000) !important;
   border: 1px solid var(--sp-forum-border, #888) !important;
 }
-
-
 
 /* --- 2. FLOATING BAR (V1 Toolbar Reduced) --- */
 .sp-floating-bar {
@@ -250,9 +399,14 @@ html[data-sp-theme="custom"] select {
   backdrop-filter: blur(18px);
   border-radius: 999px; /* Pill shape */
   border: 1px solid var(--sp-border);
-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.1);
+  box-shadow:
+    0 14px 30px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(0, 0, 0, 0.1);
   color: var(--sp-text);
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
 
   cursor: grab;
   user-select: none;
@@ -404,9 +558,16 @@ html[data-sp-theme="custom"] select {
 
 /* Error Flash (Red Shake) */
 @keyframes spFlashErrorAnim {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-3px); }
-  75% { transform: translateX(3px); }
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-3px);
+  }
+  75% {
+    transform: translateX(3px);
+  }
 }
 .sp-flash-error {
   color: #ef4444 !important; /* Force Red override */
