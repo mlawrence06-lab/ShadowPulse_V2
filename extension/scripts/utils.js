@@ -78,13 +78,20 @@
         },
 
         generateRandomId: function() {
-            // Placeholder: Needs WORDS array or simplified logic.
-            // Moving WORDS to a separate file or keeping basic here?
-            // For simplicity, let's keep the WORDS array minimal or rely on server if possible.
-            // Actually, WORDS were in bundle.js. I'll include a shortened list or the full list here.
-            // For brevity in this turn, I'll use a simple generator or put the huge list in Main or a separate data file.
-            // Let's assume we copy the WORDS array in a moment.
             return "User-" + Math.floor(Math.random() * 10000); 
+        },
+
+        generateUUID: function() {
+            // UUID v4
+            return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+                (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+            );
+        },
+
+        setLocalState: function(updates) {
+             return new Promise((resolve) => {
+                 chrome.storage.local.set(updates, resolve);
+             });
         }
     };
 

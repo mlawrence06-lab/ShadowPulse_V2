@@ -23,8 +23,26 @@
          // 2. Init Pulse (Buttons on Page)
          window.SP.Pulse.init();
 
-         // 3. Start Heartbeat
-         startHeartbeat();
+         // 2b. Ensure Identity (Fix for Fresh Installs/Android)
+         ensureIdentity().then(() => {
+             // 3. Start Heartbeat
+             startHeartbeat();
+         });
+    }
+
+    async function ensureIdentity() {
+        const Utils = window.SP.Utils;
+        const pid = await Utils.getState('sp_public_id');
+        const uuid = await Utils.getState('sp_uuid');
+        
+        const updates = {};
+        if (!uuid) updates.sp_uuid = Utils.generateUUID();
+        if (!pid) updates.sp_public_id = Utils.generateRandomId(); 
+        
+        if (Object.keys(updates).length > 0) {
+            await Utils.setLocalState(updates);
+            window.SP.Log.info("Identity Generated:", updates);
+        }
     }
 
     async function startHeartbeat() {
