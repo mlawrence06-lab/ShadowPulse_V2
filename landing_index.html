@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The MELT Method - Coming to Edmonton | FluidBody</title>
+    <meta name="description" content="The MELT Method is coming to Edmonton. Join the FluidBody waiting list to be the first to know.">
+    <style>
+        :root {
+            --melt-blue: #009CBD; /* Approximated Melt Blue */
+            --melt-orange: #FF6B00; /* Approximated Melt Orange */
+            --text-color: #333;
+            --bg-color: #f4f4f4;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            height: 100%;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        header {
+            background-color: white;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .hero {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, var(--melt-blue) 0%, #007A99 100%);
+            color: white;
+            text-align: center;
+            padding: 40px 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Abstract circles decoration */
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -100px;
+            left: -100px;
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .hero::after {
+            content: '';
+            position: absolute;
+            bottom: -50px;
+            right: -50px;
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            z-index: 1;
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            margin-bottom: 30px;
+            font-weight: 300;
+            max-width: 600px;
+            z-index: 1;
+        }
+
+        .form-box {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 400px;
+            z-index: 1;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        input[type="email"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            box-sizing: border-box;
+            transition: border-color 0.3s;
+        }
+
+        input[type="email"]:focus {
+            border-color: var(--melt-blue);
+            outline: none;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--melt-orange);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.1s;
+            text-transform: uppercase;
+        }
+
+        button:hover {
+            background-color: #e65c00;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .message {
+            margin-top: 15px;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+
+        footer {
+            background-color: #333;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            font-size: 14px;
+        }
+
+        @media (max-width: 600px) {
+            h1 { font-size: 2rem; }
+            h2 { font-size: 1.2rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div style="font-weight: bold; font-size: 24px; color: var(--melt-blue);">FluidBody</div>
+    </header>
+
+    <div class="hero">
+        <h1>The MELT Method</h1>
+        <h2>Is Coming to Edmonton</h2>
+        <p style="font-size: 1.1rem; margin-bottom: 30px; max-width: 600px;">
+            Experience the revolutionary self-care technique that reverses the effects of aging and active living.
+            <br><strong>Join our waiting list to be the first to book.</strong>
+        </p>
+
+        <div class="form-box">
+            <form id="subscribeForm">
+                <div class="input-group">
+                    <input type="email" name="email" placeholder="Enter your email address" required>
+                </div>
+                <button type="submit" id="submitBtn">Join Waiting List</button>
+                <div id="responseMessage" class="message"></div>
+            </form>
+        </div>
+    </div>
+
+    <footer>
+        &copy; 2026 FluidBody. All rights reserved.
+    </footer>
+
+    <script>
+        document.getElementById('subscribeForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const btn = document.getElementById('submitBtn');
+            const msg = document.getElementById('responseMessage');
+            const formData = new FormData(this);
+
+            btn.disabled = true;
+            btn.textContent = 'Joining...';
+            msg.textContent = '';
+            msg.className = 'message';
+
+            fetch('subscribe.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.textContent = 'Join Waiting List';
+                
+                msg.textContent = data.message;
+                if(data.status === 'success') {
+                    msg.classList.add('success');
+                    this.reset();
+                } else {
+                    msg.classList.add('error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                btn.disabled = false;
+                btn.textContent = 'Join Waiting List';
+                msg.textContent = 'An error occurred. Please try again.';
+                msg.classList.add('error');
+            });
+        });
+    </script>
+</body>
+</html>

@@ -59,7 +59,7 @@
                 const lastT = history[history.length - 1].t;
                 const windowSeconds = 3600;
                 const startWindowT = lastT - windowSeconds;
-                const isDark = document.body.getAttribute('data-sp-theme') === 'dark';
+                const isDark = document.documentElement.getAttribute('data-sp-theme') === 'dark';
                 const blockFill = isDark ? '#ffffff' : '#000000';
                 const blockOpacity = '0.15'; 
 

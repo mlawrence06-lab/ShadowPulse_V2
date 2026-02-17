@@ -1,0 +1,10 @@
+<svg width="220" height="50" viewBox="0 0 220 50" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .bold { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 800; }
+    .regular { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 300; }
+  </style>
+  <text x="0" y="35" class="bold" font-size="32" fill="black">MELT</text>
+  <text x="95" y="35" class="regular" font-size="32" fill="black">Method</text>
+  <!-- Small registered trademark symbol -->
+  <text x="205" y="20" font-family="Arial" font-size="10" fill="black">®</text>
+</svg>

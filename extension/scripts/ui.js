@@ -78,7 +78,7 @@
         let startColors = {};
         
         // Retrieve current mode vars
-        const currentMode = document.body.getAttribute('data-sp-theme') === 'light' ? 'light' : 'dark';
+        const currentMode = document.documentElement.getAttribute('data-sp-theme') === 'light' ? 'light' : 'dark';
         const storageKey = `sp_custom_${currentMode}`;
         
         const defaults = {
@@ -107,8 +107,8 @@
                 id: 'sp-theme-editor-root',
                 style: `
                     position: absolute; top: 100px; left: 100px; width: 320px;
-                    background: rgba(15, 23, 42, 0.95); color: #fff;
-                    border: 1px solid #334155; border-radius: 12px;
+                    background: var(--sp-bg-elevated, #ffffff); color: var(--sp-text, #000000);
+                    border: 1px solid var(--sp-border, #cccccc); border-radius: 12px;
                     box-shadow: 0 10px 25px rgba(0,0,0,0.5);
                     font-family: 'Segoe UI', sans-serif;
                     backdrop-filter: blur(10px); display: flex; flex-direction: column;
@@ -120,11 +120,11 @@
 
             const header = Utils.createEl('div', null, {
                 id: 'sp-theme-drag-handle',
-                style: 'padding: 15px; background: rgba(30, 41, 59, 0.8); border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; cursor: grab;'
+                style: 'padding: 15px; background: var(--sp-bg, #f0f0f0); border-bottom: 1px solid var(--sp-border, #cccccc); display: flex; justify-content: space-between; align-items: center; cursor: grab;'
             });
             header.innerHTML = `<span style="font-weight: 600; font-size: 14px;">Editor: ${currentMode.toUpperCase()}</span>`;
             const closeBtn = Utils.createEl('button', 'sp-settings-close', {
-                style: 'background: none; border: none; color: #94a3b8; font-size: 16px; cursor: pointer;'
+                style: 'background: none; border: none; color: var(--sp-text-soft, #888); font-size: 16px; cursor: pointer;'
             });
             closeBtn.innerText = '\u2715';
             closeBtn.onclick = closeEditor;
@@ -150,12 +150,12 @@
 
             mappings.forEach(m => {
                 const row = Utils.createEl('div', null, { style: 'display: flex; align-items: center; justify-content: space-between;' });
-                const label = Utils.createEl('span', null, { style: 'font-size: 13px; color: #cbd5e1;' });
+                const label = Utils.createEl('span', null, { style: 'font-size: 13px; color: var(--sp-text-soft, #888);' });
                 label.innerText = m.label;
                 const inputContainer = Utils.createEl('div', null, { style: 'display: flex; align-items: center; gap: 8px;' });
                 const textDisplay = Utils.createEl('span', null, { 
                     id: `txt_${m.key}`,
-                    style: 'font-family: monospace; font-size: 12px; color: #64748b;' 
+                    style: 'font-family: monospace; font-size: 12px; color: var(--sp-text, #000);' 
                 });
                 textDisplay.innerText = m.val;
 
@@ -179,7 +179,7 @@
             editorRoot.appendChild(body);
 
             // Footer / Save
-            const footer = Utils.createEl('div', null, { style: 'padding: 15px; border-top: 1px solid #334155; display: flex; gap: 10px; justify-content: flex-end;' });
+            const footer = Utils.createEl('div', null, { style: 'padding: 15px; border-top: 1px solid var(--sp-border, #ccc); display: flex; gap: 10px; justify-content: flex-end;' });
             
             const saveBtn = Utils.createEl('button', null, {
                 id: 'sp-theme-save',
@@ -206,7 +206,7 @@
 
             const resetBtn = Utils.createEl('button', null, {
                 id: 'sp-theme-reset',
-                style: 'padding: 8px 12px; background: transparent; color: #94a3b8; border: 1px solid #475569; border-radius: 6px; cursor: pointer; font-size: 12px;'
+                style: 'padding: 8px 12px; background: transparent; color: var(--sp-text-soft, #888); border: 1px solid var(--sp-border, #ccc); border-radius: 6px; cursor: pointer; font-size: 12px;'
             });
             resetBtn.innerText = 'RESET';
             

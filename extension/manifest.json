@@ -1,7 +1,7 @@
 {
     "manifest_version":  3,
     "name":  "ShadowPulse",
-    "version":  "1.10.42",
+    "version":  "1.10.44",
     "description":  "BitcoinTalk Alternative Recognition Tool",
     "permissions":  [
                         "storage"

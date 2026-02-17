@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="Ferrite">
+    <title>client_meeting_checklist</title>
+    <style>
+
+/* Reset and base styles */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+}
+
+/* Article container */
+.markdown-body {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 32px 24px;
+}
+
+/* Headings */
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4,
+.markdown-body h5,
+.markdown-body h6 {
+    margin-top: 24px;
+    margin-bottom: 16px;
+    font-weight: 600;
+    line-height: 1.25;
+}
+
+.markdown-body h1 { font-size: 2em; border-bottom: 1px solid; padding-bottom: 0.3em; }
+.markdown-body h2 { font-size: 1.5em; border-bottom: 1px solid; padding-bottom: 0.3em; }
+.markdown-body h3 { font-size: 1.25em; }
+.markdown-body h4 { font-size: 1em; }
+.markdown-body h5 { font-size: 0.875em; }
+.markdown-body h6 { font-size: 0.85em; }
+
+/* Paragraphs */
+.markdown-body p {
+    margin-top: 0;
+    margin-bottom: 16px;
+}
+
+/* Links */
+.markdown-body a {
+    text-decoration: none;
+}
+
+.markdown-body a:hover {
+    text-decoration: underline;
+}
+
+/* Lists */
+.markdown-body ul,
+.markdown-body ol {
+    margin-top: 0;
+    margin-bottom: 16px;
+    padding-left: 2em;
+}
+
+.markdown-body li {
+    margin-bottom: 4px;
+}
+
+.markdown-body li + li {
+    margin-top: 4px;
+}
+
+/* Task lists */
+.markdown-body ul.contains-task-list {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+.markdown-body .task-list-item {
+    padding-left: 1.5em;
+    position: relative;
+}
+
+.markdown-body .task-list-item input[type="checkbox"] {
+    position: absolute;
+    left: 0;
+    top: 0.3em;
+}
+
+/* Blockquotes */
+.markdown-body blockquote {
+    margin: 0 0 16px 0;
+    padding: 0 1em;
+    border-left: 4px solid;
+}
+
+.markdown-body blockquote > :first-child {
+    margin-top: 0;
+}
+
+.markdown-body blockquote > :last-child {
+    margin-bottom: 0;
+}
+
+/* Code */
+.markdown-body code {
+    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', 'Monaco', monospace;
+    font-size: 0.9em;
+    padding: 0.2em 0.4em;
+    border-radius: 4px;
+}
+
+.markdown-body pre {
+    margin-top: 0;
+    margin-bottom: 16px;
+    padding: 16px;
+    overflow: auto;
+    border-radius: 6px;
+    line-height: 1.45;
+}
+
+.markdown-body pre code {
+    padding: 0;
+    background: transparent;
+    border-radius: 0;
+    font-size: 0.875em;
+}
+
+/* Tables */
+.markdown-body table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-bottom: 16px;
+}
+
+.markdown-body th,
+.markdown-body td {
+    padding: 8px 12px;
+    border: 1px solid;
+}
+
+.markdown-body th {
+    font-weight: 600;
+    text-align: left;
+}
+
+.markdown-body tr:nth-child(even) td {
+    background-color: rgba(128, 128, 128, 0.05);
+}
+
+/* Horizontal rule */
+.markdown-body hr {
+    height: 2px;
+    margin: 24px 0;
+    border: none;
+}
+
+/* Images */
+.markdown-body img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+}
+
+/* Strong and emphasis */
+.markdown-body strong {
+    font-weight: 600;
+}
+
+.markdown-body em {
+    font-style: italic;
+}
+
+/* Strikethrough */
+.markdown-body del {
+    text-decoration: line-through;
+}
+
+
+
+/* Theme colors */
+:root {
+    color-scheme: dark;
+}
+
+body {
+    background-color: rgb(30, 30, 30);
+    color: rgb(220, 220, 220);
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4,
+.markdown-body h5,
+.markdown-body h6 {
+    color: rgb(100, 180, 255);
+}
+
+.markdown-body h1,
+.markdown-body h2 {
+    border-bottom-color: rgb(60, 60, 60);
+}
+
+.markdown-body a {
+    color: rgb(100, 180, 255);
+}
+
+.markdown-body blockquote {
+    color: rgb(180, 180, 180);
+    border-left-color: rgb(80, 80, 80);
+}
+
+.markdown-body code {
+    background-color: rgb(45, 45, 45);
+    color: rgb(200, 200, 150);
+}
+
+.markdown-body pre {
+    background-color: rgb(35, 39, 46);
+    border: 1px solid rgb(55, 60, 68);
+}
+
+.markdown-body th,
+.markdown-body td {
+    border-color: rgb(60, 65, 75);
+}
+
+.markdown-body th {
+    background-color: rgb(45, 50, 60);
+}
+
+.markdown-body hr {
+    background-color: rgb(80, 80, 80);
+}
+
+
+
+/* Syntax highlighting */
+.markdown-body pre code .keyword { color: rgb(198, 120, 221); }
+.markdown-body pre code .string { color: rgb(152, 195, 121); }
+.markdown-body pre code .number { color: rgb(209, 154, 102); }
+.markdown-body pre code .comment { color: rgb(92, 99, 112); font-style: italic; }
+.markdown-body pre code .function { color: rgb(97, 175, 239); }
+.markdown-body pre code .type { color: rgb(229, 192, 123); }
+.markdown-body pre code .variable { color: rgb(224, 108, 117); }
+.markdown-body pre code .operator { color: rgb(171, 178, 191); }
+.markdown-body pre code .punctuation { color: rgb(150, 150, 150); }
+
+
+
+    </style>
+</head>
+<body>
+    <article class="markdown-body">
+<h1><a href="#client-meeting-checklist" aria-hidden="true" class="anchor" id="client-meeting-checklist"></a>Client Meeting Checklist</h1>
+<h2><a href="#1-online-store-woocommerce" aria-hidden="true" class="anchor" id="1-online-store-woocommerce"></a>1. Online Store (WooCommerce)</h2>
+<p><em>Goal: Determine what they are selling and how.</em></p>
+<ul>
+<li><input type="checkbox" disabled="" /> <strong>Products</strong>:
+<ul>
+<li>What are we selling? (Physical items like rollers, or digital downloads?)</li>
+<li>Do images and descriptions already exist, or do we need to create them?</li>
+<li>Are there variations? (e.g., Sizes, Colors)</li>
+</ul>
+</li>
+<li><input type="checkbox" disabled="" /> <strong>Payments</strong>:
+<ul>
+<li>How do you want to get paid? (Stripe, PayPal, etc.)</li>
+<li>Do you have these accounts set up already?</li>
+</ul>
+</li>
+<li><input type="checkbox" disabled="" /> <strong>Shipping</strong>:
+<ul>
+<li>Do you ship physically?</li>
+<li>If yes, is it Flat Rate, Free Shipping over $X, or calculated by weight?</li>
+<li>Do you offer local pickup?</li>
+</ul>
+</li>
+<li><input type="checkbox" disabled="" /> <strong>Taxes</strong>:
+<ul>
+<li>Do we need to charge GST/HST?</li>
+</ul>
+</li>
+</ul>
+<h2><a href="#2-appointments-amelia" aria-hidden="true" class="anchor" id="2-appointments-amelia"></a>2. Appointments (Amelia)</h2>
+<p><em>Goal: Configure their booking schedule and services.</em></p>
+<ul>
+<li><input type="checkbox" disabled="" /> <strong>Services</strong>:
+<ul>
+<li>What specific appointments can people book? (e.g., &quot;1 Hour Assessment&quot;, &quot;30 Min Consultation&quot;)</li>
+<li>What is the price and duration for each?</li>
+<li>Do you need &quot;buffer time&quot; between appointments to clean up or prepare?</li>
+</ul>
+</li>
+<li><input type="checkbox" disabled="" /> <strong>Staff</strong>:
+<ul>
+<li>Is it just you, or are there other instructors?</li>
+<li>Does each person have their own Google Calendar to sync with?</li>
+</ul>
+</li>
+<li><input type="checkbox" disabled="" /> <strong>Availability</strong>:
+<ul>
+<li>What are your &quot;Business Hours&quot;? (e.g., Mon-Fri 9-5)</li>
+<li>Are there specific days off?</li>
+</ul>
+</li>
+<li><input type="checkbox" disabled="" /> <strong>Notifications</strong>:
+<ul>
+<li>Do you want SMS reminders for clients? (Use Twilio or similar service - additional cost?)</li>
+<li>Customized email confirmation text? (e.g., &quot;Please wear comfortable clothing&quot;).</li>
+</ul>
+</li>
+</ul>
+<h2><a href="#3-email-marketing-mailpoet" aria-hidden="true" class="anchor" id="3-email-marketing-mailpoet"></a>3. Email Marketing (MailPoet)</h2>
+<p><em>Goal: Set up their communication channel.</em></p>
+<ul>
+<li><input type="checkbox" disabled="" /> <strong>Lists</strong>:
+<ul>
+<li>Do you have an existing list of emails to import?</li>
+</ul>
+</li>
+<li><input type="checkbox" disabled="" /> <strong>Content</strong>:
+<ul>
+<li>What do you plan to send? (Monthly Newsletters, New Product Alerts, Tips &amp; Tricks?)</li>
+</ul>
+</li>
+<li><input type="checkbox" disabled="" /> <strong>Frequency</strong>:
+<ul>
+<li>How often? (Weekly, Monthly, Ad-hoc?)</li>
+</ul>
+</li>
+<li><input type="checkbox" disabled="" /> <strong>Automation</strong>:
+<ul>
+<li>Do you want a &quot;Welcome Email&quot; series to go out automatically when someone signs up?</li>
+</ul>
+</li>
+</ul>
+<h2><a href="#4-rewards--gamification-gamipress" aria-hidden="true" class="anchor" id="4-rewards--gamification-gamipress"></a>4. Rewards / Gamification (GamiPress)</h2>
+<p><em>Goal: Define how users are rewarded for engagement.</em></p>
+<ul>
+<li><input type="checkbox" disabled="" /> <strong>Points</strong>:
+<ul>
+<li>What actions earn points? (Logging in daily, commenting on blog posts, buying a product?)</li>
+<li>What is the exchange rate? (e.g., 100 points = $1 discount?)</li>
+</ul>
+</li>
+<li><input type="checkbox" disabled="" /> <strong>Ranks</strong>:
+<ul>
+<li>Do you want &quot;Levels&quot;? (e.g., Beginner -&gt; Advanced -&gt; Master)</li>
+<li>What perks come with higher ranks?</li>
+</ul>
+</li>
+<li><input type="checkbox" disabled="" /> <strong>Badges/Achievements</strong>:
+<ul>
+<li>Do you want fun badges? (e.g., &quot;First Purchase&quot;, &quot;Early Bird Booker&quot;)</li>
+</ul>
+</li>
+</ul>
+<h2><a href="#5-design--brand" aria-hidden="true" class="anchor" id="5-design--brand"></a>5. Design &amp; Brand</h2>
+<p><em>Goal: Ensure the site looks and feels right.</em></p>
+<ul>
+<li><input type="checkbox" disabled="" /> <strong>Visuals</strong>:
+<ul>
+<li>Do we have a Brand Kit? (Logo files, Hex color codes, Fonts)</li>
+<li>&quot;MELT Soft Roller&quot; graphic: I have created a placeholder. Do you have a professional photo to replace it?</li>
+</ul>
+</li>
+<li><input type="checkbox" disabled="" /> <strong>Tone</strong>:
+<ul>
+<li>How should the site &quot;speak&quot;? (Professional/Clinical vs. Warm/Friendly vs. High-Energy)</li>
+</ul>
+</li>
+</ul>
+
+    </article>
+</body>
+</html>
