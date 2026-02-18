@@ -47,6 +47,7 @@
 
     async function startHeartbeat() {
         const Config = window.SP.Config;
+        let lastPulseId = 0;
         
         async function beat() {
             // Get User ID
@@ -59,27 +60,45 @@
                 });
 
                 if (res && res.data) {
-                    // A. Dispatch Stats
-                    if (res.data.price_stats) {
-                        document.dispatchEvent(new CustomEvent('sp-heartbeat', { detail: res.data.price_stats }));
-                    }
+                    const data = res.data;
 
-                    // B. Check Faucet (FAUCET_GOLD)
-                    const val = res.data.btc_active;
-                    const isBtc = val === 1 || val === "1" || val === true;
-                    
-                    if (isBtc) {
-                        // Check Eligibility (Gold Logic)
-                        if (!window.SP.Faucet.isActive()) {
-                             window.SP.Faucet.checkEligibility();
+                    // A. Dispatch Stats (Isolated)
+                    try {
+                        if (data.price_stats) {
+                            document.dispatchEvent(new CustomEvent('sp-heartbeat', { detail: data.price_stats }));
                         }
-                    } else {
-                        window.SP.Faucet.reset();
-                    }
+                    } catch (err) { }
 
-                    // C. Check Pulse (PULSE_BLUE)
-                    // ... (Logic for Ripple Effect)
-                    // If new pulse ID > lastPulseId -> window.SP.UI.updateLogo(window.SP.LogoState.PULSE_BLUE);
+                    // B. Check Faucet (FAUCET_GOLD) (Isolated)
+                    try {
+                        // Defensive Type Check for 'btc_active'
+                        const val = data.btc_active;
+                        const isBtc = val === 1 || val === "1" || val === true;
+                        
+                        if (isBtc) {
+                            if (!window.SP.Faucet.isActive()) {
+                                 window.SP.Faucet.checkEligibility();
+                            }
+                        } else {
+                            window.SP.Faucet.reset();
+                        }
+                    } catch (err) { }
+
+                    // C. Check Pulse (PULSE_BLUE) (Isolated)
+                    try {
+                        const newPulseId = parseInt(data.msg_id) || 0;
+                        const lastPulseBy = data.last_pulse_by;
+
+                        if (lastPulseId !== 0 && newPulseId > lastPulseId) {
+                             // New Pulse Detected!
+                             if (lastPulseBy !== pid) {
+                                 window.SP.UI.updateLogo(window.SP.LogoState.PULSE_BLUE);
+                             }
+                        }
+                        
+                        // Update State
+                        if (newPulseId > 0) lastPulseId = newPulseId;
+                    } catch (err) { }
                 }
             } catch (e) {
                 // Ignore BG errors

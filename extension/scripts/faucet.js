@@ -16,8 +16,14 @@
                 const Config = window.SP.Config;
                 
                 fetch(`${Config.API_BASE_URL}/get_faucet_status.php?public_id=${res.sp_public_id}&uuid=${res.sp_uuid}&t=${Date.now()}`)
-                .then(r => r.json())
+                .then(r => {
+                    if (!r.ok) throw new Error("Server Error");
+                    return r.json();
+                })
                 .then(status => {
+                    if (!status) return;
+
+                    // Defensive Checks
                     if (status.can_claim === true) {
                         // TRIGGER GOLD
                         isFaucetActiveLocal = true;
@@ -25,7 +31,10 @@
                     } else if (status.reason === 'wait_delay' && status.delay_remaining > 0) {
                         // Cheat System Delay
                         isFaucetActiveLocal = true; 
-                        window.SP.Log.info(`Faucet waiting ${status.delay_remaining}s (Cheat System)`);
+                        // Only log if pertinent to debugging
+                        // window.SP.Log.info(`Faucet waiting ${status.delay_remaining}s (Cheat System)`);
+                        
+                        if(faucetCheckTimer) clearTimeout(faucetCheckTimer);
                         faucetCheckTimer = setTimeout(() => {
                             window.SP.UI.updateLogo(window.SP.LogoState.FAUCET_GOLD);
                         }, status.delay_remaining * 1000);
@@ -35,7 +44,7 @@
                     }
                 })
                 .catch(e => {
-                    console.error("Faucet Check Error", e);
+                    // Silent Fail - do not disturb user
                     isFaucetActiveLocal = false;
                 });
             });
