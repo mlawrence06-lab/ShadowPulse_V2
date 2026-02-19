@@ -120,32 +120,30 @@
             window.SP.Utils.getState('sp_show_pulse', true).then(show => {
                 if(!show) return;
 
+                // STRATEGY A: Desktop / Standard (High Precision)
                 const subjectDivs = document.querySelectorAll("#quickModForm div[id^='subject_']");
-                const pageTopicId = meta.topicId;
-
+                
                 subjectDivs.forEach((subjectDiv) => {
                     const idParts = subjectDiv.id.split('_');
                     if (idParts.length < 2) return;
                     const msgId = idParts[1];
                     if (!msgId || msgId === "0") return;
 
-                    // Locate Container
+                    if (document.querySelector(`.sp-pulse-btn[data-msg-id="${msgId}"]`)) return;
+
                     const messageLink = Array.from(document.querySelectorAll(`a[href*="msg${msgId}"]`)).find(a => 
                         a.textContent.trim().startsWith("#") || a.name === `msg${msgId}`
                     );
                     if (!messageLink) return;
 
                     const actionContainer = messageLink.closest("div") || messageLink.parentElement;
-                    const containerTd = subjectDiv.closest("td");
+                    // FIX: containerTd should be the cell containing the BUTTONS, not the Subject (which is in the header)
+                    const containerTd = actionContainer.closest("td");
 
-                    // Post Info extraction (Author, Title)
-                    // ... Simplified extraction for clarity, ideally reuse robust logic from bundle.js
+                    // Desktop Metadata Extraction
                     let postAuthor = "Unknown";
                     let postAuthorUid = 0;
-                    
-                    // Basic parent lookup
                     let parentRow = subjectDiv.closest("tr");
-                    // Walk up to find poster_info
                     for(let i=0; i<5 && parentRow; i++) {
                         if(parentRow.querySelector(".poster_info")) break;
                         parentRow = parentRow.parentElement ? parentRow.parentElement.closest("tr") : null;
@@ -154,16 +152,15 @@
                     if(parentRow) {
                         const posterInfo = parentRow.querySelector(".poster_info");
                         if(posterInfo) {
-                             const pLink = posterInfo.querySelector("a[href*='action=profile']");
-                             if(pLink) {
-                                 postAuthor = pLink.textContent.trim();
-                                 const uMatch = pLink.href.match(/u=(\d+)/);
-                                 if(uMatch) postAuthorUid = uMatch[1];
-                             } else {
-                                 // Guest
-                                 const bTag = posterInfo.querySelector("b");
-                                 if(bTag) postAuthor = bTag.textContent.trim();
-                             }
+                            const pLink = posterInfo.querySelector("a[href*='action=profile']");
+                            if(pLink) {
+                                postAuthor = pLink.textContent.trim();
+                                const uMatch = pLink.href.match(/u=(\d+)/);
+                                if(uMatch) postAuthorUid = uMatch[1];
+                            } else {
+                                const bTag = posterInfo.querySelector("b");
+                                if(bTag) postAuthor = bTag.textContent.trim();
+                            }
                         }
                     }
 
@@ -171,62 +168,157 @@
                     const sLink = subjectDiv.querySelector("a");
                     if(sLink) postTitle = sLink.textContent.trim();
 
-                    // Create Wrapper
-                    const wrapper = window.SP.Utils.createEl("div", ["sp-pulse-wrapper"]);
-                    wrapper.style.display = "inline-flex";
-                    wrapper.style.flexDirection = "column"; 
-                    wrapper.style.alignItems = "flex-end"; 
-                    wrapper.style.verticalAlign = "top";
-                    wrapper.style.marginLeft = "4px";
-
-                    const btn = this.createPulseButton(pageTopicId, msgId, {
-                      boardId: meta.boardId,
-                      topicTitle: meta.topicTitle,
-                      postTitle: postTitle,
-                      postAuthor: postAuthor,
-                      postAuthorUid: postAuthorUid,
-                    });
-
-                    // Inject
-                    const allLinks = Array.from(actionContainer.querySelectorAll("a"));
-                    const meritLink = allLinks.find((a) => a.href.includes("action=merit"));
-                    const quoteLink = allLinks.find((a) => a.href.includes("action=quote"));
-
-                    if (meritLink) {
-                        meritLink.parentNode.insertBefore(wrapper, meritLink);
-                        wrapper.appendChild(meritLink);
-                        wrapper.appendChild(btn);
-                    } else if (quoteLink) {
-                        quoteLink.parentNode.insertBefore(wrapper, quoteLink.nextSibling); 
-                        wrapper.appendChild(btn);
-                    } else {
-                        actionContainer.appendChild(wrapper);
-                        wrapper.appendChild(btn);
-                    }
-
-                    // Inject Stats Row
-                    let headerDiv = containerTd.querySelector(".keyinfo") || containerTd.querySelector(".smalltext");
-                    const statsRow = window.SP.Utils.createEl("div", ["sp-pulse-info-row"]);
-                    statsRow.dataset.msgId = msgId;
-                    statsRow.style.fontSize = "11px";
-                    statsRow.style.marginTop = "2px";
-                    statsRow.style.color = "#1e90ff";
-                    statsRow.style.fontWeight = "bold";
-
-                    if (headerDiv) {
-                        if (headerDiv.nextSibling) {
-                            headerDiv.parentNode.insertBefore(statsRow, headerDiv.nextSibling);
-                        } else {
-                            headerDiv.parentNode.appendChild(statsRow);
-                        }
-                    } else {
-                        containerTd.insertBefore(statsRow, containerTd.firstChild);
-                    }
+                    this.injectSinglePulseButton(meta, msgId, postTitle, postAuthor, postAuthorUid, actionContainer, containerTd);
                 });
 
-                // Batch Fetch
+                // STRATEGY B: Mobile / Fallback (Broad Selector)
+                // Target "Quote" links for themes that lack #quickModForm structure
+                const quoteLinks = document.querySelectorAll("a[href*='action=quote']");
+                
+                quoteLinks.forEach((quoteBtn) => {
+                    const actionContainer = quoteBtn.parentElement || quoteBtn.closest("div");
+                    if (!actionContainer) return;
+
+                    const qMatch = quoteBtn.href.match(/msg=(\d+)/);
+                    if (!qMatch) return;
+                    const msgId = qMatch[1];
+                    
+                    if (document.querySelector(`.sp-pulse-btn[data-msg-id="${msgId}"]`)) return;
+
+                    // Metadata extraction on mobile is harder, default to Unknown if not found
+                    let postTitle = "Mobile Post";
+                    let postAuthor = "Unknown";
+                    let postAuthorUid = 0;
+                    
+                    // Try to find subject div even if not in quickModForm
+                    const subjectDiv = document.getElementById(`subject_${msgId}`);
+                    if(subjectDiv) {
+                        postTitle = subjectDiv.textContent.trim();
+                        // Try to find author nearby
+                    }
+
+                    // Mobile often doesn't have the same containerTd structure for stats
+                    // so we pass null or try to find a suitable parent
+                    const containerTd = actionContainer; 
+
+                    this.injectSinglePulseButton(meta, msgId, postTitle, postAuthor, postAuthorUid, actionContainer, containerTd);
+                });
+
                 this.collectAndFetchStats();
             });
+        },
+
+        injectSinglePulseButton: function(meta, msgId, postTitle, postAuthor, postAuthorUid, actionContainer, containerTd) {
+            // STRATEGY: DOM SEPARATION (The "Right Table" Fix)
+            // 1. Buttons stay in `actionContainer` (The Button Div/Table)
+            // 2. Stats move to `containerTd` (The Main Post Footer Cell) matches "Wrong Table" user feedback.
+            
+            // --- Part 1: Button Table (Inside actionContainer) ---
+            // We wrapper the buttons to keep strict alignment between Merit and Pulse
+            const btnTable = window.SP.Utils.createEl("table", ["sp-btn-table-strict"]);
+            btnTable.setAttribute("cellpadding", "0");
+            btnTable.setAttribute("cellspacing", "0");
+            btnTable.setAttribute("border", "0");
+            btnTable.style.borderCollapse = "collapse";
+            btnTable.style.margin = "0";
+            btnTable.style.display = "inline-table"; // Inline with other buttons
+            
+            // Pulse Button
+            const btn = this.createPulseButton(meta.topicId, msgId, {
+                boardId: meta.boardId,
+                topicTitle: meta.topicTitle,
+                postTitle: postTitle,
+                postAuthor: postAuthor,
+                postAuthorUid: postAuthorUid,
+            });
+            btn.style.fontFamily = "inherit";
+            btn.style.fontSize = "inherit"; 
+            btn.style.marginLeft = "0";
+            btn.style.paddingLeft = "0";
+            
+            const allLinks = Array.from(actionContainer.querySelectorAll("a"));
+            const meritLink = allLinks.find((a) => a.href.includes("action=merit"));
+            const quoteLink = allLinks.find((a) => a.href.includes("action=quote"));
+
+            if (meritLink) {
+                // Hijack Merit
+                meritLink.parentNode.insertBefore(btnTable, meritLink);
+                
+                // Row 1: Merit
+                const rMerit = btnTable.insertRow();
+                const cMerit = rMerit.insertCell();
+                cMerit.style.padding = "0"; 
+                cMerit.style.textAlign = "left";
+                cMerit.style.whiteSpace = "nowrap";
+                
+                meritLink.style.margin = "0";
+                meritLink.style.padding = "0";
+                meritLink.style.verticalAlign = "baseline";
+                
+                cMerit.appendChild(meritLink);
+
+                // Row 2: Pulse
+                const rPulse = btnTable.insertRow();
+                const cPulse = rPulse.insertCell();
+                cPulse.style.padding = "0"; 
+                cPulse.style.textAlign = "left";
+                cPulse.style.whiteSpace = "nowrap";
+                cPulse.appendChild(btn);
+
+            } else if (quoteLink) {
+                quoteLink.parentNode.insertBefore(btnTable, quoteLink.nextSibling); 
+                
+                const rPulse = btnTable.insertRow();
+                const cPulse = rPulse.insertCell();
+                cPulse.style.padding = "0";
+                cPulse.style.textAlign = "left";
+                cPulse.style.whiteSpace = "nowrap";
+                cPulse.appendChild(btn);
+            } else {
+                actionContainer.appendChild(btnTable);
+                
+                const rPulse = btnTable.insertRow();
+                const cPulse = rPulse.insertCell();
+                cPulse.style.padding = "0";
+                cPulse.style.textAlign = "left";
+                cPulse.style.whiteSpace = "nowrap";
+                cPulse.appendChild(btn);
+            }
+
+            // --- Part 2: Stats Table (Inside containerTd / Parent Cell) ---
+            // STRATEGY: FLOAT RIGHT (Classic)
+            // Since we are definitively in the correct Footer Cell (via the fix above),
+            // a simple float right should push it to the far edge, completely separate from buttons.
+            
+            const statsTable = window.SP.Utils.createEl("table", ["sp-stats-table"]);
+            statsTable.setAttribute("cellpadding", "0");
+            statsTable.setAttribute("cellspacing", "0");
+            statsTable.setAttribute("border", "0");
+            statsTable.style.borderCollapse = "collapse";
+            statsTable.style.width = "auto";
+            statsTable.style.float = "right"; 
+            statsTable.style.clear = "both";   
+            
+            const rowStats = statsTable.insertRow();
+            const cellStats = rowStats.insertCell();
+            cellStats.style.padding = "0";
+            cellStats.style.textAlign = "right"; 
+            
+            const statsRow = window.SP.Utils.createEl("div", ["sp-pulse-info-row"]);
+            statsRow.dataset.msgId = msgId;
+            statsRow.style.fontSize = "10px"; 
+            statsRow.style.color = "#1e90ff";
+            statsRow.style.fontWeight = "bold";
+            statsRow.style.whiteSpace = "nowrap";
+            
+            cellStats.appendChild(statsRow);
+
+            // INJECTION LOGIC:
+            if (containerTd && containerTd.nodeName === "TD") {
+                 containerTd.appendChild(statsTable);
+            } else {
+                 actionContainer.appendChild(statsTable);
+            }
         },
 
         createPulseButton: function(topicId, msgId, meta) {
