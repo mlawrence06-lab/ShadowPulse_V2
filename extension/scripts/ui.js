@@ -371,6 +371,20 @@
                          <div class="sp-stats-graph"></div>
                     </div>
                 </div>
+                </div>
+                <style>
+                    @keyframes sp-pulse-flash {
+                        0% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(59, 130, 246, 0)); }
+                        50% { transform: scale(1.15); filter: drop-shadow(0 0 15px rgba(59, 130, 246, 0.8)); }
+                        100% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(59, 130, 246, 0)); }
+                    }
+                    .sp-flash {
+                        animation: sp-pulse-flash 1s ease-in-out infinite;
+                    }
+                    .sp-pulse-anim {
+                        animation: sp-pulse-flash 1s ease-in-out infinite;
+                    }
+                </style>
             `;
 
             document.body.appendChild(bar);
