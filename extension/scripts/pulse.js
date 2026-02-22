@@ -137,8 +137,8 @@
                     if (!messageLink) return;
 
                     const actionContainer = messageLink.closest("div") || messageLink.parentElement;
-                    // FIX: containerTd should be the cell containing the BUTTONS, not the Subject (which is in the header)
-                    const containerTd = actionContainer.closest("td");
+                    // FIX: containerTd is now the SUBJECT/METADATA cell (Left side) to place stats under "Merited by"
+                    const containerTd = subjectDiv.closest("td");
 
                     // Desktop Metadata Extraction
                     let postAuthor = "Unknown";
@@ -199,7 +199,10 @@
 
                     // Mobile often doesn't have the same containerTd structure for stats
                     // so we pass null or try to find a suitable parent
-                    const containerTd = actionContainer; 
+                    let containerTd = actionContainer;
+                    if(subjectDiv) {
+                        containerTd = subjectDiv.closest("td") || subjectDiv.parentElement;
+                    } 
 
                     this.injectSinglePulseButton(meta, msgId, postTitle, postAuthor, postAuthorUid, actionContainer, containerTd);
                 });
@@ -286,9 +289,7 @@
             }
 
             // --- Part 2: Stats Table (Inside containerTd / Parent Cell) ---
-            // STRATEGY: FLOAT RIGHT (Classic)
-            // Since we are definitively in the correct Footer Cell (via the fix above),
-            // a simple float right should push it to the far edge, completely separate from buttons.
+            // STRATEGY: FLUSH LEFT (Under Merited By)
             
             const statsTable = window.SP.Utils.createEl("table", ["sp-stats-table"]);
             statsTable.setAttribute("cellpadding", "0");
@@ -296,13 +297,13 @@
             statsTable.setAttribute("border", "0");
             statsTable.style.borderCollapse = "collapse";
             statsTable.style.width = "auto";
-            statsTable.style.float = "right"; 
             statsTable.style.clear = "both";   
+            statsTable.style.marginTop = "2px";
             
             const rowStats = statsTable.insertRow();
             const cellStats = rowStats.insertCell();
             cellStats.style.padding = "0";
-            cellStats.style.textAlign = "right"; 
+            cellStats.style.textAlign = "left"; 
             
             const statsRow = window.SP.Utils.createEl("div", ["sp-pulse-info-row"]);
             statsRow.dataset.msgId = msgId;
@@ -388,25 +389,30 @@
             const msgIds = Array.from(allBtns).map((b) => b.dataset.msgId).filter((id) => id && id !== "0");
             if (msgIds.length > 0) {
                 const uniqueIds = [...new Set(msgIds)];
-                // Directly call API via BG or fetch here? 
-                // Bundle used direct fetch
-                fetch(`https://shadowpulse.live/api/get_vote_status.php?msg_ids=${uniqueIds.join(",")}`)
-                .then(r => r.json())
-                .then(json => {
-                    if (json && json.success && json.data) {
-                      Object.keys(json.data).forEach((msgId) => {
-                        const stats = json.data[msgId];
-                        if (stats.user_count > 0) {
-                          const statsRow = document.querySelector(`.sp-pulse-info-row[data-msg-id="${msgId}"]`);
-                          if (statsRow) {
-                            statsRow.textContent = `Pulsed by ${stats.user_count} user${stats.user_count === 1 ? "" : "s"}`;
-                            statsRow.style.fontStyle = "italic";
-                            statsRow.style.fontSize = "11px";
-                          }
-                        }
-                      });
-                    }
-                }).catch(e => window.SP.Log.error("Batch Pulse Fetch Error", e));
+                // Directly call API via BG to benefit from new retry logic
+                chrome.runtime.sendMessage({
+                    type: "GET_VOTE_STATUS",
+                    payload: { msg_ids: uniqueIds.join(",") }
+                }, response => {
+                     if (response && response.success && response.data && response.data.data) {
+                        const dataMap = response.data.data;
+                        Object.keys(dataMap).forEach((msgId) => {
+                            const stats = dataMap[msgId];
+                            if (stats.user_count > 0) {
+                                const statsRow = document.querySelector(`.sp-pulse-info-row[data-msg-id="${msgId}"]`);
+                                if (statsRow) {
+                                    statsRow.textContent = `Pulsed by ${stats.user_count} user${stats.user_count === 1 ? "" : "s"}`;
+                                    statsRow.style.fontStyle = "italic";
+                                    statsRow.style.fontSize = "11px";
+                                }
+                            }
+                        });
+                     } else {
+                         if(response && response.error) {
+                             window.SP.Log.error("Batch Pulse Fetch Error (BG)", response.error);
+                         }
+                     }
+                });
             }
         },
         
