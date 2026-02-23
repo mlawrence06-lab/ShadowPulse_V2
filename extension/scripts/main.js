@@ -47,7 +47,7 @@
 
     async function startHeartbeat() {
         const Config = window.SP.Config;
-        let lastPulseId = 0;
+        let lastPulseTs = 0;
         
         async function beat() {
             // Get User ID
@@ -86,18 +86,18 @@
 
                     // C. Check Pulse (PULSE_BLUE) (Isolated)
                     try {
-                        const newPulseId = parseInt(data.msg_id) || 0;
+                        const newPulseTs = parseFloat(data.last_pulse) || 0;
                         const lastPulseBy = data.last_pulse_by;
 
-                        if (lastPulseId !== 0 && newPulseId > lastPulseId) {
+                        if (lastPulseTs !== 0 && newPulseTs > lastPulseTs) {
                              // New Pulse Detected!
                              if (lastPulseBy !== pid) {
                                  window.SP.UI.updateLogo(window.SP.LogoState.PULSE_BLUE);
                              }
                         }
                         
-                        // Update State
-                        if (newPulseId > 0) lastPulseId = newPulseId;
+                        // Update State: use timestamp so same-post and older-post pulses are always detected
+                        if (newPulseTs > 0) lastPulseTs = newPulseTs;
                     } catch (err) { }
                 }
             } catch (e) {
