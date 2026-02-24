@@ -577,49 +577,6 @@ html[data-sp-theme="custom"] select {
   animation: spFlashErrorAnim 0.25s ease-in-out 4; /* 4 shakes = 1s */
 }
 
-/* Text Flash for Hidden Pulse Markers */
-@keyframes spTextFlashAnim {
-  0% {
-    color: inherit;
-    text-shadow: none;
-    background: transparent;
-  }
-  20% {
-    color: var(--sp-bg) !important;
-    text-shadow: 0 0 5px var(--sp-pulse-highlight, #ff8c00);
-    background: var(--sp-pulse-highlight, #ff8c00);
-    padding: 0 4px;
-    border-radius: 4px;
-  }
-  80% {
-    color: var(--sp-bg) !important;
-    text-shadow: 0 0 5px var(--sp-pulse-highlight, #ff8c00);
-    background: var(--sp-pulse-highlight, #ff8c00);
-    padding: 0 4px;
-    border-radius: 4px;
-  }
-  100% {
-    color: inherit;
-    text-shadow: none;
-    background: transparent;
-  }
-}
-.sp-text-flash {
-  animation: spTextFlashAnim 1.2s ease-out;
-}
-
-/* Base override for the specific color codes to match body text */
-.inner span[style*="color: #d135d1"],
-.inner span[style*="color: rgb(209, 53, 209)"] {
-  color: inherit !important;
-  transition: all 0.3s ease;
-}
-
-/* User Setting: "Show Pulse Text = Disabled" */
-body.sp-hide-pulsed-text .inner span[style*="color: #d135d1"],
-body.sp-hide-pulsed-text .inner span[style*="color: rgb(209, 53, 209)"] {
-  display: none !important;
-}
 
 @keyframes spFlash10s {
   0%,

@@ -18,7 +18,7 @@
         STATS_URL: "https://shadowpulsev2.b-cdn.net/stats.json",
         POLLING_INTERVAL: 5000,
         FLASH_COOLDOWN: 5000,
-        DEBUG: true,
+        DEBUG: false,
         WEBSITE_ID: 1
     };
 
@@ -78,7 +78,12 @@
         },
 
         generateRandomId: function() {
-            return "User-" + Math.floor(Math.random() * 10000); 
+            const adjectives = ["Crypto", "Digital", "Silent", "Neon", "Cyber", "Quantum", "Shadow", "Lunar", "Solar", "Cosmic", "Hyper", "Alpha", "Beta", "Omega", "Galactic", "Stellar", "Astral", "Atomic", "Sonic", "Mystic", "Satoshi", "Based", "Anon"];
+            const nouns = ["Pulse", "Ninja", "Wizard", "Rider", "Ghost", "Dragon", "Phoenix", "Wolf", "Tiger", "Bear", "Eagle", "Falcon", "Hawk", "Shark", "Panther", "Lion", "Viper", "Cobra", "Fox", "Raven", "Whale", "Ape", "Punk"];
+            const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+            const noun = nouns[Math.floor(Math.random() * nouns.length)];
+            const num = Math.floor(Math.random() * 10000);
+            return `${adj}-${noun}-${num}`;
         },
 
         generateUUID: function() {

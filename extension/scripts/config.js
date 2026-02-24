@@ -4,7 +4,7 @@ const CONFIG = {
     STATS_URL: "https://shadowpulsev2.b-cdn.net/stats.json",
     POLLING_INTERVAL: 5000,
     FLASH_COOLDOWN: 5000,
-    DEBUG: true
+    DEBUG: false
 };
 
 // Handle Environment

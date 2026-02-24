@@ -82,8 +82,8 @@
         const storageKey = `sp_custom_${currentMode}`;
         
         const defaults = {
-            light: { bg: '#ffffff', text: '#000000', link: '#1e90ff', cat_bg: '#6699cc', cat_text: '#ffffff', title_bg: '#dce4e9', window_bg: '#f0f0f0', pulse_highlight: '#ff8c00' },
-            dark: { bg: '#0f172a', text: '#f1f5f9', link: '#38bdf8', cat_bg: '#1e293b', cat_text: '#f8fafc', title_bg: '#334155', window_bg: '#1e293b', pulse_highlight: '#ff8c00' }
+            light: { bg: '#ffffff', text: '#000000', link: '#1e90ff', cat_bg: '#6699cc', cat_text: '#ffffff', title_bg: '#dce4e9', window_bg: '#f0f0f0' },
+            dark: { bg: '#0f172a', text: '#f1f5f9', link: '#38bdf8', cat_bg: '#1e293b', cat_text: '#f8fafc', title_bg: '#334155', window_bg: '#1e293b' }
         };
 
         chrome.storage.local.get([storageKey, 'sp_custom_theme'], async (res) => {
@@ -145,8 +145,7 @@
                 { label: "Category BG", key: "cat_bg", val: startColors.cat_bg },
                 { label: "Category Text", key: "cat_text", val: startColors.cat_text },
                 { label: "Title BG", key: "title_bg", val: startColors.title_bg },
-                { label: "Window BG", key: "window_bg", val: startColors.window_bg },
-                { label: "Pulse Highlight", key: "pulse_highlight", val: startColors.pulse_highlight || '#ff8c00' }
+                { label: "Window BG", key: "window_bg", val: startColors.window_bg }
             ];
 
             mappings.forEach(m => {
@@ -464,41 +463,6 @@
             });
         },
 
-        injectCustomColorDropdown: function() {
-             // Only run on post, pm, or edit pages
-             const href = window.location.href;
-             if (!href.includes('action=post') && !href.includes('action=pm') && !href.includes('action=edit')) return;
-             
-             const inject = () => {
-                 // The color dropdown is within a generic select element right next to size
-                 const selects = document.querySelectorAll('select[onchange*="surroundText"]');
-                 
-                 for (const select of selects) {
-                      // Verify it's the color select by checking its options
-                      const firstOpt = select.options[0];
-                      if (firstOpt && firstOpt.text.toLowerCase().includes("change color")) {
-                           if (select.querySelector('option[value="[color=#d135d1]"]')) return true;
-                           
-                           const opt = document.createElement("option");
-                           // We will use a unique medium-purple hex code that is visible on both
-                           // Light and Dark themes for non-extension users, while acting as our marker.
-                           opt.value = "[color=#d135d1]";
-                           opt.text = "Pulse";
-                           // Insert as first option below the placeholder
-                           select.add(opt, 1);
-                           return true; 
-                      }
-                 }
-                 return false;
-             };
-             
-             if (!inject()) {
-                 document.addEventListener('DOMContentLoaded', inject);
-                 setTimeout(inject, 500); // Failsafe for dynamic load delays
-                 setTimeout(inject, 1500);
-             }
-        },
-
         injectSearchTable: function() {
             // STRICT CHECK: Only run on Search Page
             if (!window.location.href.includes('action=search')) return;
@@ -716,14 +680,6 @@
                                 <option value="false">Disabled</option>
                             </select>
                         </div>
-
-                        <div class="sp-settings-row">
-                            <label>Show Pulse Text</label>
-                            <select id="sp-show-pulse-text-select">
-                                <option value="true">Enabled</option>
-                                <option value="false">Disabled</option>
-                            </select>
-                        </div>
                         
                         <div class="sp-settings-row">
                             <label>Flash Faucet Logo</label>
@@ -888,17 +844,15 @@
              const graphSel = backdrop.querySelector('#sp-show-graph-select');
              const btcSel = backdrop.querySelector('#sp-btc-select');
              const pulseSel = backdrop.querySelector('#sp-show-pulse-select');
-             const pulseTextSel = backdrop.querySelector('#sp-show-pulse-text-select');
              const flashSel = backdrop.querySelector('#sp-flash-logo-select');
              const btcRow = backdrop.querySelector('#sp-btc-row');
 
-             chrome.storage.local.get(['sp_theme', 'sp_btc_source', 'sp_show_graph', 'sp_show_pulse', 'sp_show_pulse_text', 'sp_flash_logo', 'sp_btc_address'], res => {
+             chrome.storage.local.get(['sp_theme', 'sp_btc_source', 'sp_show_graph', 'sp_show_pulse', 'sp_flash_logo', 'sp_btc_address'], res => {
                 themeSel.value = res.sp_theme || 'light';
                 graphSel.value = (res.sp_show_graph !== false) ? "true" : "false";
                 btcRow.style.display = (res.sp_show_graph !== false) ? 'flex' : 'none';
                 btcSel.value = res.sp_btc_source || 'binance';
                 pulseSel.value = (res.sp_show_pulse !== false) ? "true" : "false";
-                pulseTextSel.value = (res.sp_show_pulse_text !== false) ? "true" : "false";
                 flashSel.value = (res.sp_flash_logo !== false) ? "true" : "false";
                 
                 // Set BTC Address and Init State
@@ -929,18 +883,6 @@
 
              pulseSel.addEventListener('change', (e) => {
                  chrome.storage.local.set({ sp_show_pulse: e.target.value === 'true' });
-             });
-
-             pulseTextSel.addEventListener('change', (e) => {
-                 const isVisible = e.target.value === 'true';
-                 chrome.storage.local.set({ sp_show_pulse_text: isVisible });
-                 if(isVisible) {
-                     document.body.classList.remove('sp-hide-pulsed-text');
-                 } else {
-                     document.body.classList.add('sp-hide-pulsed-text');
-                 }
-                 // Dispatch custom event if we want other components to know immediately
-                 document.dispatchEvent(new CustomEvent('sp_pulse_text_toggled', { detail: { visible: isVisible } }));
              });
 
              flashSel.addEventListener('change', (e) => {

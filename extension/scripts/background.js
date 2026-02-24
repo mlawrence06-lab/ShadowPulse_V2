@@ -34,7 +34,7 @@ async function fetchWithRetry(url, options = {}, retries = RETRY_OPTS.retries) {
                 RETRY_OPTS.maxTimeout, 
                 RETRY_OPTS.minTimeout * Math.pow(RETRY_OPTS.factor, RETRY_OPTS.retries - retries)
             );
-            console.warn(`[ShadowPulse] Fetch failed, retrying in ${delay}ms...`, err);
+            if (CONFIG.DEBUG) console.warn(`[ShadowPulse] Fetch failed, retrying in ${delay}ms...`, err);
             await wait(delay);
             return fetchWithRetry(url, options, retries - 1);
         }
@@ -169,7 +169,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         fetchWithRetry(`${CONFIG.API_BASE_URL}/log_debug.php`, {
             method: 'POST',
             body: params
-        }, 1).catch(err => console.error("Failed to send debug log", err));
+        }, 1).catch(err => { if (CONFIG.DEBUG) console.error("Failed to send debug log", err); });
         
         return false; // No response needed
     }

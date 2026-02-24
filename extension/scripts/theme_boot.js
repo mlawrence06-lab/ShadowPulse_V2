@@ -7,12 +7,7 @@
             document.documentElement.setAttribute('data-sp-theme', cachedTheme);
         }
 
-        // Apply pulse text visibility state
-        chrome.storage.local.get(['sp_show_pulse_text'], (res) => {
-            if (res.sp_show_pulse_text === false) {
-                document.body.classList.add('sp-hide-pulsed-text');
-            }
-        });
+
     } catch (e) {
         // Squelch errors (e.g. security restrictions)
     }

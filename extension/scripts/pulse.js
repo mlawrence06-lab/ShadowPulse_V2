@@ -208,10 +208,6 @@
                 });
 
                 this.collectAndFetchStats();
-                
-                // Add pulse highlight target classes
-                const targets = document.querySelectorAll('.inner span[style*="color: #d135d1"], .inner span[style*="color: rgb(209, 53, 209)"]');
-                targets.forEach(el => el.classList.add('sp-pulsed-text'));
             });
         },
 
@@ -340,19 +336,8 @@
 
              btnPulse.addEventListener("click", async (e) => {
                  e.preventDefault(); e.stopPropagation();
-                 
                  btnPulse.classList.add("sp-flash");
                  setTimeout(() => btnPulse.classList.remove("sp-flash"), 1000);
-                 
-                 // Flash any hidden trigger text within the post body
-                 const postBody = document.getElementById(`msg_${msgId}`) || btnPulse.closest('tr').querySelector('.inner');
-                 if(postBody) {
-                     const hiddenTexts = postBody.querySelectorAll('.sp-pulsed-text');
-                     hiddenTexts.forEach(txt => {
-                         txt.classList.add("sp-text-flash");
-                         setTimeout(() => txt.classList.remove("sp-text-flash"), 1200);
-                     });
-                 }
                  
                  lastSelfPulseTime = Date.now();
 
@@ -439,18 +424,6 @@
                 void btn.offsetWidth;
                 btn.classList.add("sp-flash");
                 setTimeout(() => btn.classList.remove("sp-flash"), 1000);
-             }
-             
-             // Also flash hidden text if applicable
-             const postBody = document.getElementById(`msg_${msgId}`);
-             if(postBody) {
-                 const hiddenTexts = postBody.querySelectorAll('.sp-pulsed-text');
-                 hiddenTexts.forEach(txt => {
-                     txt.classList.remove("sp-text-flash");
-                     void txt.offsetWidth;
-                     txt.classList.add("sp-text-flash");
-                     setTimeout(() => txt.classList.remove("sp-text-flash"), 1200);
-                 });
              }
         }
     };
