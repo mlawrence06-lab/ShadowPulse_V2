@@ -448,6 +448,21 @@
             scores.forEach((el) => el.removeAttribute("style"));
         },
 
+        fixTrustPageColors: function() {
+            if (!window.location.href.includes('action=trust')) return;
+            
+            const tds = document.querySelectorAll('td[style*="color:"]');
+            tds.forEach(td => {
+                const styleAttr = td.getAttribute('style');
+                if (styleAttr) {
+                    const colorMatch = styleAttr.match(/color:\s*([^;]+)/i);
+                    if (colorMatch && !colorMatch[0].includes('!important')) {
+                        td.style.setProperty('color', colorMatch[1].trim(), 'important');
+                    }
+                }
+            });
+        },
+
         injectSearchTable: function() {
             // STRICT CHECK: Only run on Search Page
             if (!window.location.href.includes('action=search')) return;
