@@ -97,6 +97,9 @@
                              // New Pulse Detected!
                              if (lastPulseBy !== pid) {
                                  window.SP.UI.updateLogo(window.SP.LogoState.PULSE_BLUE);
+                                 if (data.msg_id) {
+                                     window.SP.Pulse.flashPulseButton(data.msg_id);
+                                 }
                              }
                         }
                         
