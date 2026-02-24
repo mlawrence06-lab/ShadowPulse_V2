@@ -21,6 +21,9 @@
          setTimeout(window.SP.UI.stripTrustScoreStyles, 500); // Delay slightly for page load
          setTimeout(window.SP.UI.fixTrustPageColors, 500);
 
+         // 1.5 Inject Compose Dropdown Option
+         window.SP.UI.injectCustomColorDropdown();
+
          // 2. Init Pulse (Buttons on Page)
          window.SP.Pulse.init();
 
