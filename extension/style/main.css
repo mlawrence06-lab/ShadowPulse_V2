@@ -746,17 +746,15 @@ html[data-sp-theme="custom"] select {
 }
 
 /* --- 5. SEARCH TABLE --- */
-/* Forced Light Theme to match Forum Default, ignoring SP Dark Mode */
 .sp-search-table {
   width: 100%;
   margin-bottom: 20px;
   border-collapse: separate;
   border-spacing: 12px;
 }
-/* Revert to hardcoded Light Colors to ignore 'var(--sp-bg-elevated)' from Dark Mode */
 .sp-search-col {
-  background: #e8f4ff; /* Hardcoded Light Blue */
-  border: 1px solid #d0e4f7;
+  background: var(--sp-bg-elevated, #e8f4ff);
+  border: 1px solid var(--sp-border, #d0e4f7);
   border-radius: 12px;
   padding: 16px;
   text-align: center;
@@ -767,35 +765,42 @@ html[data-sp-theme="custom"] select {
   font-weight: 700;
   margin-bottom: 12px;
   font-size: 14px;
-  color: #333333; /* Hardcoded Dark Text */
+  color: var(--sp-text, #333333);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
+.sp-search-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+}
 .sp-search-col input {
-  width: 70%;
+  flex: 1;
+  min-width: 0;
   padding: 6px 10px;
-  margin-right: 4px;
-  background: #ffffff;
-  border: 1px solid #ccc;
-  color: #000;
+  background: var(--sp-bg, #ffffff);
+  border: 1px solid var(--sp-border, #ccc);
+  color: var(--sp-text, #000000);
   border-radius: 6px;
   outline: none;
 }
 .sp-search-col input:focus {
-  border-color: #1e90ff; /* Accent */
+  border-color: var(--sp-accent, #1e90ff);
 }
 .sp-search-col button {
   padding: 6px 12px;
   cursor: pointer;
-  background: #ffffff;
-  border: 1px solid #ccc;
-  color: #333;
+  background: var(--sp-bg, #ffffff);
+  border: 1px solid var(--sp-border, #ccc);
+  color: var(--sp-text, #333333);
   border-radius: 6px;
   font-weight: 600;
   transition: all 0.2s;
+  flex-shrink: 0;
 }
 .sp-search-col button:hover {
-  background: #1e90ff;
+  background: var(--sp-accent, #1e90ff);
   color: #fff;
-  border-color: #1e90ff;
+  border-color: var(--sp-accent, #1e90ff);
 }

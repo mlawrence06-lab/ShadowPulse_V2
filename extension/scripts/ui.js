@@ -468,68 +468,95 @@
             if (!window.location.href.includes('action=search')) return;
 
             const Utils = window.SP.Utils;
+            
+            // Find the Google Search form
+            let googleForm = document.querySelector('form[action*="google"]');
+            if (!googleForm) {
+                // Try finding by button value
+                const btns = document.querySelectorAll('input[type="submit"], input[type="button"], button');
+                for (let b of btns) {
+                    if ((b.value && b.value.toLowerCase().includes('google')) || 
+                        (b.textContent && b.textContent.toLowerCase().includes('google'))) {
+                        googleForm = b.closest('form');
+                        if (googleForm) break;
+                    }
+                }
+            }
+            
             let targetContainer = null;
+            let searchFormFallback = null;
             
-            // 1. Try standard form (Primary Target)
-            const form = document.querySelector('form[action*="action=search2"]');
-            if(form) targetContainer = form.parentElement;
-
-            // 2. Manual Fallback for different themes (Only if on search page)
-            
-            // 4. Manual Fallback for different themes
-            if (!targetContainer) {
-                // Look for td.windowbg containing "Forum Search"
-                 const tds = document.querySelectorAll('td.windowbg, div.windowbg');
-                 for(let td of tds) {
-                     if(td.textContent.includes('Forum Search') && td.querySelector('input')) {
-                         // found it
-                         // check parent tr -> table -> div check?
-                         // actually just use this TD if it has the input
-                         targetContainer = td;
-                         break; 
-                     }
-                 }
+            if (googleForm) {
+                // We'll replace googleForm specifically
+                targetContainer = googleForm.parentElement;
+            } else {
+                // Fallback: look for the main search form but NOT the quick search one in the header
+                let searchForm = document.getElementById('searchform');
+                if (!searchForm) {
+                    const forms = document.querySelectorAll('form[action*="action=search2"]');
+                    for (let f of forms) {
+                        if (f.id !== 'search_form' && !f.closest('#header')) {
+                             searchForm = f; break;
+                        }
+                    }
+                }
+                if (searchForm) searchFormFallback = searchForm;
             }
 
-            if (targetContainer) {
-                const forumForm = targetContainer.querySelector('form[action*="action=search2"]');
-                // Clean up old search if found to replace/prepend
-                if (forumForm) {
-                    // Remove siblings before form if they are text nodes describing "Forum Search"
-                    // But maybe user wants to keep them? 
-                    // Bundle logic was aggressive:
-                    // while (targetContainer.firstChild && targetContainer.firstChild !== forumForm) ...
-                    // Let's replicate safer prepend
-                }
-
+            if (targetContainer || searchFormFallback) {
                 const table = Utils.createEl('table', ['sp-search-table']);
                 table.id = 'sp-search-table';
                 table.innerHTML = `
                     <tr>
                         <td class="sp-search-col">
                             <div class="sp-search-header">ShadowPulse</div>
-                            <input type="text" id="sp-s-input" placeholder="Search Forum..." disabled style="opacity:0.5; cursor:not-allowed;" />
-                            <button id="sp-s-btn" disabled style="opacity:0.5; cursor:not-allowed;">Go</button>
+                            <div class="sp-search-row">
+                                <input type="text" id="sp-s-input" placeholder="Search Forum..." disabled style="opacity:0.5; cursor:not-allowed;" />
+                                <button id="sp-s-btn" disabled style="opacity:0.5; cursor:not-allowed;">Go</button>
+                            </div>
                         </td>
                         <td class="sp-search-col">
                             <div class="sp-search-header">Google</div>
-                            <input type="text" id="sp-g-input" placeholder="Site Search..." />
-                            <button id="sp-g-btn">Go</button>
+                            <div class="sp-search-row">
+                                <input type="text" id="sp-g-input" placeholder="Site Search..." />
+                                <button id="sp-g-btn">Go</button>
+                            </div>
                         </td>
                         <td class="sp-search-col">
                             <div class="sp-search-header">BitList</div>
-                            <input type="text" id="sp-n-input" placeholder="Advanced..." disabled style="opacity:0.5; cursor:not-allowed;" />
-                            <button id="sp-n-btn" disabled style="opacity:0.5; cursor:not-allowed;">Go</button>
+                            <div class="sp-search-row">
+                                <input type="text" id="sp-n-input" placeholder="Advanced..." disabled style="opacity:0.5; cursor:not-allowed;" />
+                                <button id="sp-n-btn" disabled style="opacity:0.5; cursor:not-allowed;">Go</button>
+                            </div>
                         </td>
                     </tr>
                 `;
                 
-                // Insert Logic
-                // If forumForm exists, insert Before. Else Append.
-                if (forumForm && forumForm.parentNode === targetContainer) {
-                     targetContainer.insertBefore(table, forumForm);
-                } else {
-                     targetContainer.prepend(table);
+                if (googleForm) {
+                    // Remove the old Google instructions and header above the form
+                    let node = googleForm.previousSibling;
+                    while (node) {
+                        let prevNode = node.previousSibling;
+                        const nn = node.nodeName.toUpperCase();
+                        
+                        if (node.nodeType === Node.TEXT_NODE || nn === 'BR') {
+                            node.remove();
+                        } else if (nn === 'B' || nn === 'STRONG') {
+                            if (node.textContent.toLowerCase().includes('google')) {
+                                node.remove(); // Remove the "Google Search" title
+                                break;
+                            }
+                            node.remove();
+                        } else {
+                            break; // Stop if we hit a hr, div, table, etc.
+                        }
+                        node = prevNode;
+                    }
+                    
+                    googleForm.parentNode.insertBefore(table, googleForm);
+                    googleForm.remove();
+                } else if (searchFormFallback) {
+                    searchFormFallback.parentElement.prepend(table);
                 }
 
                 // Bind Logic
