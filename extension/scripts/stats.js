@@ -41,8 +41,8 @@
 
             const prices = history.map(h => h.p).filter(n => !isNaN(n));
             if (prices.length === 0) return;
-            const minP = Math.min(...prices);
-            const maxP = Math.max(...prices);
+            const minP = prices.reduce((min, p) => p < min ? p : min, prices[0]);
+            const maxP = prices.reduce((max, p) => p > max ? p : max, prices[0]);
             const rangeP = (maxP - minP) || 1;
 
             const hasTime = history[0].t > 0;

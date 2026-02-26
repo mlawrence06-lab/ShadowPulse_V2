@@ -511,21 +511,21 @@
                         <td class="sp-search-col">
                             <div class="sp-search-header">ShadowPulse</div>
                             <div class="sp-search-row">
-                                <input type="text" id="sp-s-input" placeholder="Search Forum..." disabled style="opacity:0.5; cursor:not-allowed;" />
+                                <input type="text" id="sp-s-input" placeholder="Search Forum..." disabled style="opacity:0.5; cursor:not-allowed;" autocomplete="off" spellcheck="false" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" />
                                 <button id="sp-s-btn" disabled style="opacity:0.5; cursor:not-allowed;">Go</button>
                             </div>
                         </td>
                         <td class="sp-search-col">
                             <div class="sp-search-header">Google</div>
                             <div class="sp-search-row">
-                                <input type="text" id="sp-g-input" placeholder="Site Search..." />
+                                <input type="text" id="sp-g-input" placeholder="Site Search..." autocomplete="off" spellcheck="false" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" />
                                 <button id="sp-g-btn">Go</button>
                             </div>
                         </td>
                         <td class="sp-search-col">
                             <div class="sp-search-header">BitList</div>
                             <div class="sp-search-row">
-                                <input type="text" id="sp-n-input" placeholder="Advanced..." disabled style="opacity:0.5; cursor:not-allowed;" />
+                                <input type="text" id="sp-n-input" placeholder="Advanced..." disabled style="opacity:0.5; cursor:not-allowed;" autocomplete="off" spellcheck="false" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" />
                                 <button id="sp-n-btn" disabled style="opacity:0.5; cursor:not-allowed;">Go</button>
                             </div>
                         </td>
@@ -720,7 +720,7 @@
                         <div class="sp-settings-row" id="sp-btc-addr-row" style="display:none; align-items:center;">
                             <label>BTC Address</label>
                             <div style="display:flex; gap:4px; align-items:center;">
-                                <input type="text" id="sp-btc-input" placeholder="bc1q..." style="width:180px; text-align:right; font-size:11px;" />
+                                <input type="text" id="sp-btc-input" placeholder="bc1q..." style="width:180px; text-align:right; font-size:11px;" autocomplete="off" spellcheck="false" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" />
                                 <button id="sp-btc-submit" style="width:24px; height:24px; padding:0; cursor:pointer;" disabled>✓</button>
                             </div>
                         </div>
@@ -729,7 +729,7 @@
                         <div class="sp-settings-row">
                             <label>Display Name</label>
                             <div style="display:flex; gap:4px; align-items:center;">
-                                <input type="text" id="sp-name-input" placeholder="User ID" style="width:180px; text-align:right;" />
+                                <input type="text" id="sp-name-input" placeholder="User ID" style="width:180px; text-align:right;" autocomplete="off" spellcheck="false" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" />
                                 <button id="sp-name-submit" style="width:24px; height:24px; padding:0; cursor:pointer;" disabled>✓</button>
                             </div>
                         </div>
@@ -798,7 +798,7 @@
                             <div class="sp-settings-row" style="margin-top:4px; display:flex;">
                                 <span style="margin-right:4px;">Restore:</span>
                                 <div class="sp-settings-input-group" style="margin:0; flex:1; display:flex;">
-                                    <input type="text" id="sp-restore-input" placeholder="Paste code" style="flex:1; width:0;" /> 
+                                    <input type="text" id="sp-restore-input" placeholder="Paste code" style="flex:1; width:0;" autocomplete="off" spellcheck="false" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" /> 
                                     <button id="sp-restore-btn" class="sp-text-btn">GO</button>
                                 </div>
                             </div>
