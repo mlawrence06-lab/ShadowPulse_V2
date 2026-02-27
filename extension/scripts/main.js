@@ -12,6 +12,7 @@
         }
     }, 50);
 
+    // AUDIT: Bootstraps the visual UI, logic hooks, and underlying identity/heartbeat loops on page load.
     function init() {
          window.SP.Log.info("ShadowPulse v" + chrome.runtime.getManifest().version + " Initializing...");
          
@@ -31,6 +32,7 @@
          });
     }
 
+    // AUDIT: Generates or retrieves unique identifiers for the user to securely interact with the backend APIs.
     async function ensureIdentity() {
         const Utils = window.SP.Utils;
         const pid = await Utils.getState('sp_public_id');
@@ -46,10 +48,12 @@
         }
     }
 
+    // AUDIT: Initiates a recurring loop to pull user-specific statistics, pulses, and faucet status.
     async function startHeartbeat() {
         const Config = window.SP.Config;
         let lastPulseTs = 0;
         
+        // AUDIT: Fires a safe background message to query the state API without triggering CORS faults.
         async function beat() {
             // Get User ID
             const pid = await window.SP.Utils.getState('sp_public_id');

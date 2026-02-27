@@ -8,6 +8,7 @@
 
     window.SP.Faucet = {
         
+        // AUDIT: Queries the server to check if the user is eligible for a BTC faucet claim, triggering the gold logo state.
         checkEligibility: function() {
             chrome.storage.local.get(['sp_public_id', 'sp_uuid', 'sp_flash_logo'], res => {
                 if (res.sp_flash_logo === false) return; 
@@ -50,16 +51,19 @@
             });
         },
 
+        // AUDIT: Resets the local faucet active state and clears any pending visual triggers.
         reset: function() {
             isFaucetActiveLocal = false;
             if(faucetCheckTimer) clearTimeout(faucetCheckTimer);
             window.SP.UI.updateLogo(window.SP.LogoState.NORMAL);
         },
 
+        // AUDIT: Returns true if the faucet UI trigger is currently active for the user.
         isActive: function() {
             return isFaucetActiveLocal;
         },
 
+        // AUDIT: Opens the external claim page for the user using their local storage identity parameters.
         claim: function() {
             chrome.storage.local.get(['sp_public_id', 'sp_uuid'], res => {
                 const claimUrl = `https://shadowpulse.live/claim.php?voter_id=${res.sp_public_id}&uuid=${res.sp_uuid}`;
