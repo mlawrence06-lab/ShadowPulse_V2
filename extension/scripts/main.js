@@ -74,6 +74,11 @@
                         }
                     } catch (err) { }
 
+
+                    // B+C shared context: read pulse identity once so both sections can exclude the sender
+                    const newPulseTs = parseFloat(data.last_pulse) || 0;
+                    const lastPulseBy = data.last_pulse_by;
+
                     // B. Check Faucet (FAUCET_GOLD) (Isolated)
                     try {
                         // Defensive Type Check for 'btc_active'
@@ -81,7 +86,8 @@
                         const isBtc = val === 1 || val === "1" || val === true;
                         
                         if (isBtc) {
-                            if (!window.SP.Faucet.isActive()) {
+                            // Only trigger faucet for OTHER users — suppress for the sender to prevent cheating
+                            if (!window.SP.Faucet.isActive() && lastPulseBy !== pid) {
                                  window.SP.Faucet.checkEligibility();
                             }
                         } else {
@@ -91,9 +97,6 @@
 
                     // C. Check Pulse (PULSE_BLUE) (Isolated)
                     try {
-                        const newPulseTs = parseFloat(data.last_pulse) || 0;
-                        const lastPulseBy = data.last_pulse_by;
-
                         if (lastPulseTs !== 0 && newPulseTs > lastPulseTs) {
                              // New Pulse Detected!
                              if (lastPulseBy !== pid) {

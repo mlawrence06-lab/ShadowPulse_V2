@@ -765,8 +765,9 @@
                              <span class="sp-stat-value" id="sp-stat-votes">0</span>
                         </div>
 
-                        <div class="sp-settings-row" style="justify-content:center; margin-top:8px;">
+                        <div class="sp-settings-row" style="justify-content:center; gap:14px; margin-top:8px;">
                              <a href="https://shadowpulse.live/reports/" target="_blank" class="sp-link">Report Center</a>
+                             <a href="https://shadowpulse.live/reports/faucet_activity.php" id="sp-faucet-activity-link" target="_blank" class="sp-link">Faucet Activity</a>
                         </div>
 
                         <hr class="sp-sep" />
@@ -1007,6 +1008,14 @@
                          }
                      });
                  });
+             });
+
+             // Wire Faucet Activity link with current pid
+             chrome.storage.local.get(['sp_public_id'], res => {
+                 const faLink = backdrop.querySelector('#sp-faucet-activity-link');
+                 if (faLink && res.sp_public_id) {
+                     faLink.href = `https://shadowpulse.live/reports/faucet_activity.php?pid=${encodeURIComponent(res.sp_public_id)}`;
+                 }
              });
 
              // Stats Update
