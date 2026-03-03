@@ -1,0 +1,37 @@
+name: Build Extension
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "extension/**"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get extension version
+        id: get_version
+        run: |
+          VERSION=$(jq -r .version extension/manifest.json)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Extracted version: $VERSION"
+
+      - name: Build zip
+        run: |
+          cd extension
+          zip -r ../extension.zip *
+
+      - name: Rename file with version
+        run: |
+          mv extension.zip ShadowPulse-v${{ env.VERSION }}.zip
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ShadowPulse-v${{ env.VERSION }}
+          path: ShadowPulse-v${{ env.VERSION }}.zip
