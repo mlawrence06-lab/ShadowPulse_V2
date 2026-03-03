@@ -3,6 +3,14 @@
 
 import { CONFIG } from './config.js';
 
+// Global Error Handlers (Service Worker)
+self.addEventListener('error', (event) => {
+    console.error('[ShadowPulse Service Worker Fatal Error]', event.error || event.message);
+});
+self.addEventListener('unhandledrejection', (event) => {
+    console.error('[ShadowPulse Service Worker Unhandled Promise Rejection]', event.reason);
+});
+
 // --- CONFIGURATION ---
 const RETRY_OPTS = {
     retries: 2,
@@ -157,7 +165,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
 
     } catch (criticalError) {
-        if (CONFIG.DEBUG) console.error("CRITICAL BACKGROUND ERROR", criticalError);
-        sendResponse({ success: false, error: "Critical Extension Error" });
+        console.error("CRITICAL BACKGROUND ERROR", criticalError);
+        sendResponse({ success: false, error: "Critical Extension Error: " + (criticalError.message || criticalError) });
     }
 });
