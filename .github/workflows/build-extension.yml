@@ -5,7 +5,10 @@ on:
     branches:
       - main
     paths:
-      - "extension/**"
+      - 'extension/**'
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -24,14 +27,19 @@ jobs:
       - name: Build zip
         run: |
           cd extension
-          zip -r ../extension.zip *
+          zip -r ../ShadowPulse.zip *
 
-      - name: Rename file with version
-        run: |
-          mv extension.zip ShadowPulse-v${{ env.VERSION }}.zip
-
-      - name: Upload Artifact
+      - name: Upload Artifact (Private)
         uses: actions/upload-artifact@v4
         with:
           name: ShadowPulse-v${{ env.VERSION }}
-          path: ShadowPulse-v${{ env.VERSION }}.zip
+          path: ShadowPulse.zip
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VERSION }}
+          name: ShadowPulse Release v${{ env.VERSION }}
+          files: ShadowPulse.zip
+          draft: false
+          prerelease: false
