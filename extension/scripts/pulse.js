@@ -93,7 +93,7 @@
             // 2. Title from Header
             const allHeaders = document.querySelectorAll("td.catbg, div.catbg, .header, td"); 
             for (const el of allHeaders) {
-                 const text = el.innerText || el.textContent; 
+                 const text = el.textContent; 
                  if (text && text.trim().startsWith("Topic: ") && text.includes("(Read")) {
                      const start = text.indexOf("Topic: ") + 7;
                      const end = text.lastIndexOf("(Read");

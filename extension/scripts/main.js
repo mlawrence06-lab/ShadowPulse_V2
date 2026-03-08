@@ -67,6 +67,9 @@
 
     // AUDIT: Fires a safe background message to query the state API without triggering CORS faults.
     async function beat() {
+      // Pause heartbeat if the tab is backgrounded to prevent resource exhaustion and mobile crash
+      if (document.visibilityState === "hidden") return;
+
       // Get User ID
       const pid = await window.SP.Utils.getState("sp_public_id");
 
@@ -129,12 +132,19 @@
         }
       } catch (e) {
         // Ignore BG errors
-        if (CONFIG.DEBUG)
+        if (Config.DEBUG)
           console.warn("[ShadowPulse Heartbeat Warning - BG Fetch]", e);
       }
     }
 
     setInterval(beat, Config.POLLING_INTERVAL);
     beat();
+    
+    // Resume polling immediately when the user returns to the tab
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+            beat();
+        }
+    });
   }
 })();
