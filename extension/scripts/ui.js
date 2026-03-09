@@ -1020,7 +1020,7 @@
 
              // Stats Update
              const updateStats = () => {
-                 chrome.storage.local.get(['sp_public_id'], res => {
+                 chrome.storage.local.get(['sp_public_id', 'sp_uuid'], res => {
                      if(res.sp_public_id) {
                          chrome.runtime.sendMessage({
                              type: "GET_USER_STATS", payload: { voter_id: res.sp_public_id }
