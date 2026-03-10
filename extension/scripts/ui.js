@@ -120,7 +120,11 @@
                 `
             });
 
-            const closeEditor = () => backdropCtx.remove();
+            let cleanupDrag = () => {};
+            const closeEditor = () => {
+                cleanupDrag();
+                backdropCtx.remove();
+            };
 
             const header = Utils.createEl('div', null, {
                 id: 'sp-theme-drag-handle',
@@ -267,6 +271,13 @@
             const onDragEnd = () => {
                 isDragging = false;
                 header.style.cursor = 'grab';
+            };
+
+            cleanupDrag = () => {
+                window.removeEventListener('mousemove', onDragMove);
+                window.removeEventListener('mouseup', onDragEnd);
+                window.removeEventListener('touchmove', onDragMove, {passive: false});
+                window.removeEventListener('touchend', onDragEnd);
             };
 
             header.addEventListener('mousedown', onDragStart);
@@ -620,7 +631,7 @@
                 document.body.classList.remove('sp-dragging');
                 window.removeEventListener('mousemove', onMove, true);
                 window.removeEventListener('mouseup', onEnd, true);
-                window.removeEventListener('touchmove', onMove);
+                window.removeEventListener('touchmove', onMove, {passive: false});
                 window.removeEventListener('touchend', onEnd);
                 
                 if(hasMoved) {

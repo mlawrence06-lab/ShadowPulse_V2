@@ -137,13 +137,29 @@
       }
     }
 
-    setInterval(beat, Config.POLLING_INTERVAL);
-    beat();
+    let heartbeatInterval = null;
+
+    function startHeartbeatLoop() {
+        if (heartbeatInterval) clearInterval(heartbeatInterval);
+        heartbeatInterval = setInterval(beat, Config.POLLING_INTERVAL);
+        beat();
+    }
+
+    function stopHeartbeatLoop() {
+        if (heartbeatInterval) {
+            clearInterval(heartbeatInterval);
+            heartbeatInterval = null;
+        }
+    }
+
+    startHeartbeatLoop();
     
-    // Resume polling immediately when the user returns to the tab
+    // Pause or Resume polling immediately when the user leaves or returns to the tab
     document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "visible") {
-            beat();
+            startHeartbeatLoop();
+        } else {
+            stopHeartbeatLoop();
         }
     });
   }
