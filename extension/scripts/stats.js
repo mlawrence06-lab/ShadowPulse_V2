@@ -3,18 +3,31 @@
 
     window.SP = window.SP || {};
 
+    // Module-level reference to the active heartbeat listener.
+    // Stored here so it can be removed before re-registering on page navigation,
+    // preventing listener accumulation that caused the overnight mobile crash.
+    let _heartbeatListener = null;
+
     window.SP.Stats = {
         // AUDIT: Binds event listeners to the DOM to render the price and graph data when a heartbeat is received.
         init: function(bar) {
             const priceEl = bar.querySelector('.sp-stats-price');
             const graphEl = bar.querySelector('.sp-stats-graph');
 
-            // Event Driven Update
-            document.addEventListener('sp-heartbeat', (e) => {
+            // Remove any previously registered listener before adding a new one.
+            // Without this, every page navigation stacks another listener on document,
+            // each holding a closure over stale DOM references — the primary memory leak.
+            if (_heartbeatListener) {
+                document.removeEventListener('sp-heartbeat', _heartbeatListener);
+            }
+
+            _heartbeatListener = (e) => {
                 if (e.detail) {
-                     this.render(priceEl, graphEl, e.detail);
+                    this.render(priceEl, graphEl, e.detail);
                 }
-            });
+            };
+
+            document.addEventListener('sp-heartbeat', _heartbeatListener);
         },
 
         // AUDIT: Draws an SVG sparkline graph and updates the live ticker price elements using the latest backend stats data.

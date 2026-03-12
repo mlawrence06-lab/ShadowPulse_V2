@@ -832,8 +832,6 @@
                 </div>`;
               
               document.body.appendChild(backdrop);
-              const close = () => backdrop.classList.remove('sp-settings-open');
-              backdrop.querySelector('.sp-settings-close').onclick = close;
               setTimeout(() => backdrop.classList.add('sp-settings-open'), 10);
               
               // === IMPL LOGIC ===
@@ -870,7 +868,17 @@
                     modal.style.top = (initialTop + dy) + 'px';
                 };
                 const onDragEnd = () => { isDragging = false; };
-                
+
+                // closeModal removes the window-level drag listeners before hiding the modal.
+                // This prevents listener accumulation: without cleanup, each page-load would
+                // permanently attach mousemove/mouseup handlers holding closures over modal DOM nodes.
+                const closeModal = () => {
+                    window.removeEventListener('mousemove', onDragMove);
+                    window.removeEventListener('mouseup', onDragEnd);
+                    backdrop.classList.remove('sp-settings-open');
+                };
+                backdrop.querySelector('.sp-settings-close').onclick = closeModal;
+
                 handle.addEventListener('mousedown', onDragStart);
                 window.addEventListener('mousemove', onDragMove);
                 window.addEventListener('mouseup', onDragEnd);

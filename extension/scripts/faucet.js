@@ -37,6 +37,9 @@
                         
                         if(faucetCheckTimer) clearTimeout(faucetCheckTimer);
                         faucetCheckTimer = setTimeout(() => {
+                            faucetCheckTimer = null;
+                            // Guard: if reset() was called while we were waiting, abort
+                            if (!isFaucetActiveLocal) return;
                             window.SP.UI.updateLogo(window.SP.LogoState.FAUCET_GOLD);
                         }, status.delay_remaining * 1000);
                     } else {
