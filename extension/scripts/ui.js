@@ -274,9 +274,11 @@
             };
 
             cleanupDrag = () => {
+                header.removeEventListener('mousedown', onDragStart);
+                header.removeEventListener('touchstart', onDragStart);
                 window.removeEventListener('mousemove', onDragMove);
                 window.removeEventListener('mouseup', onDragEnd);
-                window.removeEventListener('touchmove', onDragMove, {passive: false});
+                window.removeEventListener('touchmove', onDragMove);
                 window.removeEventListener('touchend', onDragEnd);
             };
 
@@ -873,15 +875,28 @@
                 // This prevents listener accumulation: without cleanup, each page-load would
                 // permanently attach mousemove/mouseup handlers holding closures over modal DOM nodes.
                 const closeModal = () => {
+                    handle.removeEventListener('mousedown', onDragStart);
+                    handle.removeEventListener('touchstart', onDragStart);
                     window.removeEventListener('mousemove', onDragMove);
                     window.removeEventListener('mouseup', onDragEnd);
+                    window.removeEventListener('touchmove', onDragMove);
+                    window.removeEventListener('touchend', onDragEnd);
                     backdrop.classList.remove('sp-settings-open');
+                    setTimeout(() => backdrop.remove(), 300);
                 };
                 backdrop.querySelector('.sp-settings-close').onclick = closeModal;
+                
+                // Close on backdrop click
+                backdrop.addEventListener('click', (e) => {
+                    if (e.target === backdrop) closeModal();
+                });
 
                 handle.addEventListener('mousedown', onDragStart);
                 window.addEventListener('mousemove', onDragMove);
                 window.addEventListener('mouseup', onDragEnd);
+                handle.addEventListener('touchstart', onDragStart, {passive: false});
+                window.addEventListener('touchmove', onDragMove, {passive: false});
+                window.addEventListener('touchend', onDragEnd);
         },
 
         // AUDIT: Connects click and input listeners to the inputs embedded within the settings modal.

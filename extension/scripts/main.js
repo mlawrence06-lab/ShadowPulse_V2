@@ -13,10 +13,17 @@
   });
 
   // Wait for Body
+  // FIX: Add max attempts to prevent infinite interval if body never appears
+  let bodyCheckAttempts = 0;
+  const MAX_BODY_CHECK_ATTEMPTS = 200; // 10 seconds max (200 * 50ms)
   const waitForBody = setInterval(() => {
+    bodyCheckAttempts++;
     if (document.body) {
       clearInterval(waitForBody);
       init();
+    } else if (bodyCheckAttempts >= MAX_BODY_CHECK_ATTEMPTS) {
+      clearInterval(waitForBody);
+      console.error("[ShadowPulse] Failed to initialize: document.body not found after 10 seconds");
     }
   }, 50);
 

@@ -36,12 +36,15 @@
                         // window.SP.Log.info(`Faucet waiting ${status.delay_remaining}s (Cheat System)`);
                         
                         if(faucetCheckTimer) clearTimeout(faucetCheckTimer);
+                        // FIX: Cap maximum delay to prevent memory issues with very long timers
+                        const MAX_DELAY_SECONDS = 300; // 5 minutes max
+                        const cappedDelay = Math.min(status.delay_remaining, MAX_DELAY_SECONDS);
                         faucetCheckTimer = setTimeout(() => {
                             faucetCheckTimer = null;
                             // Guard: if reset() was called while we were waiting, abort
                             if (!isFaucetActiveLocal) return;
                             window.SP.UI.updateLogo(window.SP.LogoState.FAUCET_GOLD);
-                        }, status.delay_remaining * 1000);
+                        }, cappedDelay * 1000);
                     } else {
                         isFaucetActiveLocal = false;
                         window.SP.UI.updateLogo(window.SP.LogoState.NORMAL);
@@ -69,7 +72,13 @@
         // AUDIT: Opens the external claim page for the user using their local storage identity parameters.
         claim: function() {
             chrome.storage.local.get(['sp_public_id', 'sp_uuid'], res => {
-                const claimUrl = `https://shadowpulse.live/claim.php?voter_id=${res.sp_public_id}&uuid=${res.sp_uuid}`;
+                // FIX: Validate identity before opening claim URL
+                if (!res.sp_public_id || !res.sp_uuid) {
+                    window.SP.Log.error("Cannot claim: missing identity");
+                    alert("Error: Identity not found. Please refresh the page.");
+                    return;
+                }
+                const claimUrl = `https://shadowpulse.live/claim.php?voter_id=${encodeURIComponent(res.sp_public_id)}&uuid=${encodeURIComponent(res.sp_uuid)}`;
                 window.open(claimUrl, '_blank');
                 this.reset();
             });
