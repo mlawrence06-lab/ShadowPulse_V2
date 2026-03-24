@@ -319,19 +319,15 @@
             statsRow.style.fontFamily = "Verdana, sans-serif";
             statsRow.style.whiteSpace = "nowrap";
             
-            // Split into two spans to match "Merited" + "by" styling
-            const pulsedSpan = document.createElement("span");
-            pulsedSpan.textContent = "Pulsed";
-            pulsedSpan.style.color = "#22c55e"; /* Green like "Merited" */
-            pulsedSpan.style.fontWeight = "normal";
+            // Match BitcoinTalk's "Merited by" styling exactly
+            // "Merited" is green, "by" is gray/normal
+            statsRow.innerHTML = `<span class="sp-pulsed-text">Pulsed</span><span class="sp-by-text"> by </span>`;
+            const pulsedSpan = statsRow.querySelector('.sp-pulsed-text');
+            const bySpan = statsRow.querySelector('.sp-by-text');
             
-            const bySpan = document.createElement("span");
-            bySpan.style.color = "#6b7280"; /* Gray like "by" */
-            
-            statsRow.appendChild(pulsedSpan);
-            statsRow.appendChild(bySpan);
-            statsRow._pulsedSpan = pulsedSpan;
-            statsRow._bySpan = bySpan;
+            // Apply inline styles to match Merit styling
+            pulsedSpan.style.color = "#22c55e"; /* Merit green */
+            bySpan.style.color = "inherit"; /* Inherit from parent, will match surrounding text */
             
             cellStats.appendChild(statsRow);
 
@@ -392,11 +388,13 @@
                                let match = text.match(/(\d+)/);
                                let count = match ? parseInt(match[1]) : 0;
                                let newCount = count + 1;
-                               // Update the spans separately to preserve styling
-                               if (statsRow._pulsedSpan && statsRow._bySpan) {
-                                   statsRow._bySpan.textContent = ` by ${newCount} user${newCount === 1 ? "" : "s"}`;
+                               // Update the count while preserving styling
+                               const bySpan = statsRow.querySelector('.sp-by-text');
+                               if (bySpan) {
+                                   bySpan.textContent = ` by ${newCount} user${newCount === 1 ? "" : "s"}`;
                                } else {
                                    statsRow.textContent = `Pulsed by ${newCount} user${newCount === 1 ? "" : "s"}`;
+                                   statsRow.style.color = "#22c55e";
                                }
                           }
                       } else {
@@ -432,8 +430,9 @@
                                     statsRow.style.fontSize = "11px";
                                     statsRow.style.fontFamily = "Verdana, sans-serif";
                                     // Check if we have the split spans
-                                    if (statsRow._pulsedSpan && statsRow._bySpan) {
-                                        statsRow._bySpan.textContent = ` by ${stats.user_count} user${stats.user_count === 1 ? "" : "s"}`;
+                                    const bySpan = statsRow.querySelector('.sp-by-text');
+                                    if (bySpan) {
+                                        bySpan.textContent = ` by ${stats.user_count} user${stats.user_count === 1 ? "" : "s"}`;
                                     } else {
                                         statsRow.textContent = `Pulsed by ${stats.user_count} user${stats.user_count === 1 ? "" : "s"}`;
                                         statsRow.style.color = "#22c55e";
