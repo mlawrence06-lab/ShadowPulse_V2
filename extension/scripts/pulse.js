@@ -315,10 +315,23 @@
             
             const statsRow = window.SP.Utils.createEl("div", ["sp-pulse-info-row"]);
             statsRow.dataset.msgId = msgId;
-            statsRow.style.fontSize = "10px"; 
-            statsRow.style.color = "#22c55e"; /* Match 'Merited by' green color */
-            statsRow.style.fontStyle = "italic"; /* Match 'Merited by' italic style */
+            statsRow.style.fontSize = "11px";
+            statsRow.style.fontFamily = "Verdana, sans-serif";
             statsRow.style.whiteSpace = "nowrap";
+            
+            // Split into two spans to match "Merited" + "by" styling
+            const pulsedSpan = document.createElement("span");
+            pulsedSpan.textContent = "Pulsed";
+            pulsedSpan.style.color = "#22c55e"; /* Green like "Merited" */
+            pulsedSpan.style.fontWeight = "normal";
+            
+            const bySpan = document.createElement("span");
+            bySpan.style.color = "#6b7280"; /* Gray like "by" */
+            
+            statsRow.appendChild(pulsedSpan);
+            statsRow.appendChild(bySpan);
+            statsRow._pulsedSpan = pulsedSpan;
+            statsRow._bySpan = bySpan;
             
             cellStats.appendChild(statsRow);
 
@@ -379,8 +392,12 @@
                                let match = text.match(/(\d+)/);
                                let count = match ? parseInt(match[1]) : 0;
                                let newCount = count + 1;
-                               statsRow.textContent = `Pulsed by ${newCount} user${newCount === 1 ? "" : "s"}`;
-                               statsRow.style.fontStyle = "italic";
+                               // Update the spans separately to preserve styling
+                               if (statsRow._pulsedSpan && statsRow._bySpan) {
+                                   statsRow._bySpan.textContent = ` by ${newCount} user${newCount === 1 ? "" : "s"}`;
+                               } else {
+                                   statsRow.textContent = `Pulsed by ${newCount} user${newCount === 1 ? "" : "s"}`;
+                               }
                           }
                       } else {
                           // Error Flash
@@ -412,10 +429,15 @@
                             if (stats.user_count > 0) {
                                 const statsRow = document.querySelector(`.sp-pulse-info-row[data-msg-id="${msgId}"]`);
                                 if (statsRow) {
-                                    statsRow.textContent = `Pulsed by ${stats.user_count} user${stats.user_count === 1 ? "" : "s"}`;
-                                    statsRow.style.fontStyle = "italic";
-                                    statsRow.style.color = "#22c55e"; /* Match 'Merited by' green */
                                     statsRow.style.fontSize = "11px";
+                                    statsRow.style.fontFamily = "Verdana, sans-serif";
+                                    // Check if we have the split spans
+                                    if (statsRow._pulsedSpan && statsRow._bySpan) {
+                                        statsRow._bySpan.textContent = ` by ${stats.user_count} user${stats.user_count === 1 ? "" : "s"}`;
+                                    } else {
+                                        statsRow.textContent = `Pulsed by ${stats.user_count} user${stats.user_count === 1 ? "" : "s"}`;
+                                        statsRow.style.color = "#22c55e";
+                                    }
                                 }
                             }
                         });
