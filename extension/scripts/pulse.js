@@ -316,8 +316,8 @@
             const statsRow = window.SP.Utils.createEl("div", ["sp-pulse-info-row"]);
             statsRow.dataset.msgId = msgId;
             statsRow.style.fontSize = "10px"; 
-            statsRow.style.color = "#1e90ff";
-            statsRow.style.fontWeight = "bold";
+            statsRow.style.color = "#22c55e"; /* Match 'Merited by' green color */
+            statsRow.style.fontStyle = "italic"; /* Match 'Merited by' italic style */
             statsRow.style.whiteSpace = "nowrap";
             
             cellStats.appendChild(statsRow);
@@ -345,8 +345,8 @@
 
              btnPulse.addEventListener("click", async (e) => {
                  e.preventDefault(); e.stopPropagation();
-                 btnPulse.classList.add("sp-flash");
-                 setTimeout(() => btnPulse.classList.remove("sp-flash"), 1000);
+                 btnPulse.classList.add("sp-flash", "sp-pulse-clicked");
+                 setTimeout(() => btnPulse.classList.remove("sp-flash", "sp-pulse-clicked"), 1000);
                  
                  lastSelfPulseTime = Date.now();
 
@@ -380,6 +380,7 @@
                                let count = match ? parseInt(match[1]) : 0;
                                let newCount = count + 1;
                                statsRow.textContent = `Pulsed by ${newCount} user${newCount === 1 ? "" : "s"}`;
+                               statsRow.style.fontStyle = "italic";
                           }
                       } else {
                           // Error Flash
@@ -413,6 +414,7 @@
                                 if (statsRow) {
                                     statsRow.textContent = `Pulsed by ${stats.user_count} user${stats.user_count === 1 ? "" : "s"}`;
                                     statsRow.style.fontStyle = "italic";
+                                    statsRow.style.color = "#22c55e"; /* Match 'Merited by' green */
                                     statsRow.style.fontSize = "11px";
                                 }
                             }
