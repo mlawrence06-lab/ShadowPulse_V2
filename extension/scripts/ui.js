@@ -32,26 +32,33 @@
     let barHasMoved = false; // Track if bar was just dragged
 
     // Helper Functions within Module Scope
-    // AUDIT: Validates Bitcoin addresses via regex and enables/disables the submission button accordingly.
+    // AUDIT: Minimal Bitcoin address validation. Only checks basic format.
+    // Invalid addresses are rejected and cleared.
     function validateBtcAddress(addr, btcInp, btcBtn) {
         if(!btcInp || !btcBtn) return false;
         
         addr = addr.trim();
-        const items = /^(1|3|bc1)/.test(addr) && addr.length > 25 && addr.length < 90; 
-        const isValid = items || addr === "";
         
-        if (addr.length > 0) {
-            if (isValid) {
-                btcInp.style.borderColor = '';
-            } else {
-                btcInp.style.borderColor = 'red';
-            }
-            btcBtn.disabled = false;
-        } else {
+        // Empty = not set (valid state, but button disabled)
+        if (addr === "") {
             btcInp.style.borderColor = '';
             btcBtn.disabled = true;
+            return false;
         }
-        return isValid && addr.length > 0;
+        
+        // Minimal validation: starts with 1, 3, or bc1 and reasonable length
+        const isValid = /^(1|3|bc1)/.test(addr) && addr.length >= 26 && addr.length <= 90;
+        
+        if (isValid) {
+            btcInp.style.borderColor = '';
+            btcBtn.disabled = false;
+            return true;
+        } else {
+            // Invalid address - show error and clear
+            btcInp.style.borderColor = '#ef4444';
+            btcBtn.disabled = true;
+            return false;
+        }
     }
 
     // AUDIT: Toggles the visibility of the BTC address input row within the settings modal.
@@ -85,8 +92,8 @@
         const storageKey = `sp_custom_${currentMode}`;
         
         const defaults = {
-            light: { bg: '#ffffff', text: '#000000', link: '#1e90ff', cat_bg: '#6699cc', cat_text: '#ffffff', title_bg: '#dce4e9', window_bg: '#f0f0f0' },
-            dark: { bg: '#0f172a', text: '#f1f5f9', link: '#38bdf8', cat_bg: '#1e293b', cat_text: '#f8fafc', title_bg: '#334155', window_bg: '#1e293b' }
+            light: { bg: '#ffffff', text: '#000000', link: '#1e90ff', cat_bg: '#6699cc', cat_text: '#ffffff', title_bg: '#dce4e9', window_bg: '#f0f0f0', pulse_click: '#dc2626' },
+            dark: { bg: '#0f172a', text: '#f1f5f9', link: '#38bdf8', cat_bg: '#1e293b', cat_text: '#f8fafc', title_bg: '#334155', window_bg: '#1e293b', pulse_click: '#f87171' }
         };
 
         chrome.storage.local.get([storageKey, 'sp_custom_theme'], async (res) => {
@@ -153,7 +160,8 @@
                 { label: "Category BG", key: "cat_bg", val: startColors.cat_bg },
                 { label: "Category Text", key: "cat_text", val: startColors.cat_text },
                 { label: "Title BG", key: "title_bg", val: startColors.title_bg },
-                { label: "Window BG", key: "window_bg", val: startColors.window_bg }
+                { label: "Window BG", key: "window_bg", val: startColors.window_bg },
+                { label: "+Pulse Color", key: "pulse_click", val: startColors.pulse_click }
             ];
 
             mappings.forEach(m => {
@@ -746,7 +754,7 @@
                         <div class="sp-settings-row" id="sp-btc-addr-row" style="display:none; align-items:center;">
                             <label>BTC Address</label>
                             <div style="display:flex; gap:4px; align-items:center;">
-                                <input type="text" id="sp-btc-input" placeholder="bc1q..." style="width:180px; text-align:right; font-size:11px;" autocomplete="off" spellcheck="false" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" />
+                                <input type="text" id="sp-btc-input" placeholder="Not set" style="width:180px; text-align:right; font-size:11px;" autocomplete="off" spellcheck="false" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" />
                                 <button id="sp-btc-submit" style="width:24px; height:24px; padding:0; cursor:pointer;" disabled>✓</button>
                             </div>
                         </div>
@@ -976,9 +984,47 @@
 
              btcBtn.addEventListener('click', () => {
                  const addr = btcInp.value.trim();
+                 
+                 // If empty, clear the address (user wants to unset it)
+                 if (addr === '') {
+                     btcBtn.textContent = '...';
+                     chrome.storage.local.get(['sp_uuid', 'sp_public_id'], res => {
+                         const params = new URLSearchParams();
+                         params.append('public_id', '');
+                         params.append('uuid', res.sp_uuid);
+                         params.append('btc_address', '');
+                         
+                         fetch(`${Config.API_BASE_URL}/register_identity.php`, {
+                             method: 'POST', body: params
+                         })
+                         .then(r => r.json())
+                         .then(d => {
+                             if(d.status === 'success') {
+                                 chrome.storage.local.remove(['sp_btc_address']);
+                                 btcBtn.textContent = '✓';
+                                 btcInp.value = '';
+                                 btcInp.placeholder = 'Not set';
+                             } else {
+                                 btcBtn.textContent = '✓';
+                             }
+                         })
+                         .catch(() => {
+                             btcBtn.textContent = '✓';
+                         });
+                     });
+                     return;
+                 }
+                 
+                 // Validate address
                  if(!validateBtcAddress(addr, btcInp, btcBtn)) {
+                     // Invalid address - clear it after error animation
                      btcInp.classList.add('sp-flash-error');
-                     setTimeout(() => btcInp.classList.remove('sp-flash-error'), 1000);
+                     setTimeout(() => {
+                         btcInp.classList.remove('sp-flash-error');
+                         btcInp.value = '';  // Clear invalid input
+                         btcInp.placeholder = 'Not set';
+                         validateBtcAddress('', btcInp, btcBtn);
+                     }, 800);
                      return;
                  }
                  
@@ -996,12 +1042,15 @@
                      .then(d => {
                          if(d.status === 'success') {
                              chrome.storage.local.set({ sp_btc_address: addr });
-                             btcBtn.textContent = 'OK';
-                             setTimeout(() => btcBtn.textContent = '✓', 2000);
+                             btcBtn.textContent = '✓';
                          } else {
-                             btcBtn.innerHTML = 'X';
+                             btcBtn.textContent = '✗';
                              btcInp.classList.add('sp-flash-error');
+                             setTimeout(() => btcInp.classList.remove('sp-flash-error'), 1000);
                          }
+                     })
+                     .catch(() => {
+                         btcBtn.textContent = '✗';
                      });
                  });
              });

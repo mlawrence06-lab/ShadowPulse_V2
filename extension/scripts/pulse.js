@@ -313,21 +313,10 @@
             cellStats.style.padding = "0";
             cellStats.style.textAlign = "left"; 
             
-            const statsRow = window.SP.Utils.createEl("div", ["sp-pulse-info-row"]);
+            const statsRow = window.SP.Utils.createEl("div", ["sp-pulse-info-row", "smalltext"]);
             statsRow.dataset.msgId = msgId;
-            statsRow.style.fontSize = "11px";
-            statsRow.style.fontFamily = "Verdana, sans-serif";
             statsRow.style.whiteSpace = "nowrap";
-            
-            // Match BitcoinTalk's "Merited by" styling exactly
-            // "Merited" is green, "by" is gray/normal
-            statsRow.innerHTML = `<span class="sp-pulsed-text">Pulsed</span><span class="sp-by-text"> by </span>`;
-            const pulsedSpan = statsRow.querySelector('.sp-pulsed-text');
-            const bySpan = statsRow.querySelector('.sp-by-text');
-            
-            // Apply inline styles to match Merit styling
-            pulsedSpan.style.color = "#22c55e"; /* Merit green */
-            bySpan.style.color = "inherit"; /* Inherit from parent, will match surrounding text */
+            // Start empty - text will be set when pulse data loads or user pulses
             
             cellStats.appendChild(statsRow);
 
@@ -388,18 +377,12 @@
                                let match = text.match(/(\d+)/);
                                let count = match ? parseInt(match[1]) : 0;
                                let newCount = count + 1;
-                               // Update the count while preserving styling
-                               const bySpan = statsRow.querySelector('.sp-by-text');
-                               if (bySpan) {
-                                   bySpan.textContent = ` by ${newCount} user${newCount === 1 ? "" : "s"}`;
-                               } else {
-                                   statsRow.textContent = `Pulsed by ${newCount} user${newCount === 1 ? "" : "s"}`;
-                                   statsRow.style.color = "#22c55e";
-                               }
+                               statsRow.innerHTML = `<i><span style="color:green">Pulsed</span> by ${newCount} user${newCount === 1 ? "" : "s"}</i>`;
+                               statsRow.classList.add("smalltext");
                           }
                       } else {
                           // Error Flash
-                          btnPulse.classList.remove("sp-flash");
+                          btnPulse.classList.remove("sp-flash", "sp-pulse-clicked");
                           void btnPulse.offsetWidth;
                           btnPulse.classList.add("sp-flash-error");
                           setTimeout(() => btnPulse.classList.remove("sp-flash-error"), 1000);
@@ -427,16 +410,8 @@
                             if (stats.user_count > 0) {
                                 const statsRow = document.querySelector(`.sp-pulse-info-row[data-msg-id="${msgId}"]`);
                                 if (statsRow) {
-                                    statsRow.style.fontSize = "11px";
-                                    statsRow.style.fontFamily = "Verdana, sans-serif";
-                                    // Check if we have the split spans
-                                    const bySpan = statsRow.querySelector('.sp-by-text');
-                                    if (bySpan) {
-                                        bySpan.textContent = ` by ${stats.user_count} user${stats.user_count === 1 ? "" : "s"}`;
-                                    } else {
-                                        statsRow.textContent = `Pulsed by ${stats.user_count} user${stats.user_count === 1 ? "" : "s"}`;
-                                        statsRow.style.color = "#22c55e";
-                                    }
+                                    statsRow.innerHTML = `<i><span style="color:green">Pulsed</span> by ${stats.user_count} user${stats.user_count === 1 ? "" : "s"}</i>`;
+                                    statsRow.classList.add("smalltext");
                                 }
                             }
                         });

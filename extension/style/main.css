@@ -11,6 +11,7 @@
   --sp-accent: #1e90ff;
   --sp-accent-soft: rgba(30, 144, 255, 0.18);
   --sp-pulse-highlight: #ff8c00;
+  --sp-forum-pulse-click: #dc2626; /* Red for light theme */
 }
 
 /* Dark Mode Injection (Applied via attribute) */
@@ -49,6 +50,7 @@
   --sp-accent: #38bdf8; /* Sky 400 */
   --sp-accent-soft: rgba(56, 189, 248, 0.15);
   --sp-pulse-highlight: #ff8c00;
+  --sp-forum-pulse-click: #f87171; /* Lighter red for dark theme */
 
   /* Forum Overrides for Standard Dark Mode */
   --sp-forum-bg: #0f172a;
@@ -559,16 +561,15 @@ html[data-sp-theme="custom"] select {
   animation: spFlashAnim 0.6s ease-out;
 }
 
-/* Pulse Button Click - Temporary Color Change */
-@keyframes spPulseColorAnim {
-  0% { color: #1e90ff; }
-  20% { color: #22c55e; text-shadow: 0 0 12px rgba(34, 197, 94, 0.8); transform: scale(1.1); }
-  40% { color: #16a34a; text-shadow: 0 0 16px rgba(22, 163, 74, 1); transform: scale(1.15); }
-  60% { color: #22c55e; text-shadow: 0 0 12px rgba(34, 197, 94, 0.8); transform: scale(1.1); }
+/* +Pulse Click Color Flash */
+@keyframes spPulseClickAnim {
+  0% { color: var(--sp-forum-pulse-click); text-shadow: 0 0 0 transparent; }
+  30% { color: var(--sp-forum-pulse-click); text-shadow: 0 0 12px var(--sp-forum-pulse-click); transform: scale(1.1); }
+  60% { color: var(--sp-forum-pulse-click); text-shadow: 0 0 8px var(--sp-forum-pulse-click); transform: scale(1.05); }
   100% { color: #1e90ff; text-shadow: none; transform: scale(1); }
 }
-.sp-pulse-clicked {
-  animation: spPulseColorAnim 0.8s ease-out;
+.sp-pulse-btn.sp-pulse-clicked {
+  animation: spPulseClickAnim 0.6s ease-out;
   display: inline-block;
 }
 

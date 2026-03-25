@@ -5,6 +5,8 @@
     
     let isFaucetActiveLocal = false;
     let faucetCheckTimer = null;
+    let faucetTimeoutTimer = null;
+    const FAUCET_WINDOW_MS = 10000; // 10 seconds claim window
 
     window.SP.Faucet = {
         
@@ -29,8 +31,17 @@
                         // TRIGGER GOLD
                         isFaucetActiveLocal = true;
                         window.SP.UI.updateLogo(window.SP.LogoState.FAUCET_GOLD);
+                        
+                        // Start 10-second claim window timer
+                        if (faucetTimeoutTimer) clearTimeout(faucetTimeoutTimer);
+                        faucetTimeoutTimer = setTimeout(() => {
+                            faucetTimeoutTimer = null;
+                            if (isFaucetActiveLocal) {
+                                window.SP.Faucet.reset();
+                            }
+                        }, FAUCET_WINDOW_MS);
                     } else if (status.reason === 'wait_delay' && status.delay_remaining > 0) {
-                        // Cheat System Delay
+                        // Anti-Cheat System Delay
                         isFaucetActiveLocal = true; 
                         // Only log if pertinent to debugging
                         // window.SP.Log.info(`Faucet waiting ${status.delay_remaining}s (Cheat System)`);
@@ -61,6 +72,9 @@
         reset: function() {
             isFaucetActiveLocal = false;
             if(faucetCheckTimer) clearTimeout(faucetCheckTimer);
+            if(faucetTimeoutTimer) clearTimeout(faucetTimeoutTimer);
+            faucetCheckTimer = null;
+            faucetTimeoutTimer = null;
             window.SP.UI.updateLogo(window.SP.LogoState.NORMAL);
         },
 
