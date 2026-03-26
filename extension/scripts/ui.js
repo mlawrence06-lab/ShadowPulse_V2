@@ -134,6 +134,8 @@
             const closeEditor = () => {
                 cleanupDrag();
                 backdropCtx.remove();
+                // Restore original theme (revert unsaved preview changes)
+                window.SP.UI.applyThemeLogic(currentMode);
             };
 
             const header = Utils.createEl('div', null, {
@@ -307,7 +309,12 @@
         
         // AUDIT: Commits selected theme colors to CSS variables attached to the document body.
         applyThemeLogic: function(themeMode) {
-            document.body.removeAttribute('style'); 
+            // Only remove our specific custom properties, not all body styles
+            const propertiesToClear = ['bg', 'text', 'link', 'cat_bg', 'cat_text', 'title_bg', 'window_bg', 'pulse_click'];
+            propertiesToClear.forEach(key => {
+                const varName = `--sp-forum-${key.replace('_','-')}`;
+                document.body.style.removeProperty(varName);
+            });
             document.documentElement.setAttribute('data-sp-theme', themeMode);
             localStorage.setItem('sp_theme_sync', themeMode);
 

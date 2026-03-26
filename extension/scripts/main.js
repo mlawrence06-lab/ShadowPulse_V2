@@ -38,8 +38,10 @@
     // 1. Inject UI
     window.SP.UI.injectFloatingBar();
     window.SP.UI.injectSearchTable();
-    setTimeout(window.SP.UI.stripTrustScoreStyles, 500); // Delay slightly for page load
-    setTimeout(window.SP.UI.fixTrustPageColors, 500);
+    setTimeout(() => {
+        if (window.SP.UI.stripTrustScoreStyles) window.SP.UI.stripTrustScoreStyles();
+        if (window.SP.UI.fixTrustPageColors) window.SP.UI.fixTrustPageColors();
+    }, 500);
 
     // 2. Init Pulse (Buttons on Page)
     window.SP.Pulse.init();

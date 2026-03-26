@@ -12,6 +12,10 @@
         
         // AUDIT: Queries the server to check if the user is eligible for a BTC faucet claim, triggering the gold logo state.
         checkEligibility: function() {
+            // Prevent multiple concurrent eligibility checks
+            if (this._checkingEligibility) return;
+            this._checkingEligibility = true;
+            
             chrome.storage.local.get(['sp_public_id', 'sp_uuid', 'sp_flash_logo'], res => {
                 if (res.sp_flash_logo === false) return; 
                 if (!res.sp_public_id || !res.sp_uuid) return;
@@ -64,6 +68,9 @@
                 .catch(e => {
                     // Silent Fail - do not disturb user
                     isFaucetActiveLocal = false;
+                })
+                .finally(() => {
+                    this._checkingEligibility = false;
                 });
             });
         },

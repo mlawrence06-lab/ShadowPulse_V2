@@ -2,8 +2,6 @@
     "use strict";
     window.SP = window.SP || {};
 
-    let lastSelfPulseTime = 0;
-
     window.SP.Pulse = {
         // AUDIT: Bootstraps the Pulse UI injection by waiting for the DOM to be ready before scanning the page.
         init: function() {
@@ -346,8 +344,6 @@
                  btnPulse.classList.add("sp-flash", "sp-pulse-clicked");
                  setTimeout(() => btnPulse.classList.remove("sp-flash", "sp-pulse-clicked"), 1000);
                  
-                 lastSelfPulseTime = Date.now();
-
                  const pid = await window.SP.Utils.getState('sp_public_id');
                  const uuid = await window.SP.Utils.getState('sp_uuid');
                  
