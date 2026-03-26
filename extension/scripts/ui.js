@@ -87,24 +87,27 @@
         let editorRoot;
         let startColors = {};
         
-        // Retrieve current mode vars
-        const currentMode = document.documentElement.getAttribute('data-sp-theme') === 'light' ? 'light' : 'dark';
-        const storageKey = `sp_custom_${currentMode}`;
-        
-        const defaults = {
-            light: { bg: '#ffffff', text: '#000000', link: '#1e90ff', cat_bg: '#6699cc', cat_text: '#ffffff', title_bg: '#dce4e9', window_bg: '#f0f0f0', pulse_click: '#dc2626' },
-            dark: { bg: '#0f172a', text: '#f1f5f9', link: '#38bdf8', cat_bg: '#1e293b', cat_text: '#f8fafc', title_bg: '#334155', window_bg: '#1e293b', pulse_click: '#f87171' }
-        };
+        // Retrieve current mode vars from storage (not from data-sp-theme attribute,
+        // which could be 'custom' when a custom theme is active)
+        chrome.storage.local.get(['sp_theme'], (themeRes) => {
+            const currentMode = themeRes.sp_theme === 'dark' ? 'dark' : 'light';
+            const storageKey = `sp_custom_${currentMode}`;
+            
+            const defaults = {
+                light: { bg: '#ffffff', text: '#000000', link: '#1e90ff', cat_bg: '#6699cc', cat_text: '#ffffff', title_bg: '#dce4e9', window_bg: '#f0f0f0', pulse_click: '#dc2626' },
+                dark: { bg: '#0f172a', text: '#f1f5f9', link: '#38bdf8', cat_bg: '#1e293b', cat_text: '#f8fafc', title_bg: '#334155', window_bg: '#1e293b', pulse_click: '#f87171' }
+            };
 
-        chrome.storage.local.get([storageKey, 'sp_custom_theme'], async (res) => {
-             startColors = res[storageKey] || defaults[currentMode];
-             // Fallback for migration
-             if(currentMode === 'dark' && !res[storageKey] && res.sp_custom_theme) {
-                 startColors = res.sp_custom_theme;
-             }
-             if(!startColors.bg) startColors = defaults[currentMode];
+            chrome.storage.local.get([storageKey, 'sp_custom_theme'], async (res) => {
+                 startColors = res[storageKey] || defaults[currentMode];
+                 // Fallback for migration
+                 if(currentMode === 'dark' && !res[storageKey] && res.sp_custom_theme) {
+                     startColors = res.sp_custom_theme;
+                 }
+                 if(!startColors.bg) startColors = defaults[currentMode];
 
-             renderEditor(startColors, currentMode, storageKey);
+                 renderEditor(startColors, currentMode, storageKey);
+            });
         });
 
         // AUDIT: Renders the custom color picker UI and attaches real-time preview injection logic.
@@ -318,6 +321,14 @@
                          document.body.style.setProperty(varName, customObj[key]);
                     });
                     document.documentElement.setAttribute('data-sp-theme', 'custom');
+                } else {
+                    // No custom theme in storage - ensure we clear any lingering custom properties
+                    // that might have been set by the theme editor preview
+                    const propertiesToClear = ['bg', 'text', 'link', 'cat_bg', 'cat_text', 'title_bg', 'window_bg', 'pulse_click'];
+                    propertiesToClear.forEach(key => {
+                        const varName = key.startsWith('--') ? key : `--sp-forum-${key.replace('_','-')}`;
+                        document.body.style.removeProperty(varName);
+                    });
                 }
             });
         },
