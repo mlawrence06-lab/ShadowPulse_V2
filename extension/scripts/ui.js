@@ -560,8 +560,8 @@
                         <td class="sp-search-col">
                             <div class="sp-search-header">ShadowPulse</div>
                             <div class="sp-search-row">
-                                <input type="text" id="sp-s-input" placeholder="Search Forum..." disabled style="opacity:0.5; cursor:not-allowed;" autocomplete="off" spellcheck="false" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" />
-                                <button id="sp-s-btn" disabled style="opacity:0.5; cursor:not-allowed;">Go</button>
+                                <input type="text" id="sp-s-input" placeholder="Search Forum..." autocomplete="off" spellcheck="false" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" />
+                                <button id="sp-s-btn">Go</button>
                             </div>
                         </td>
                         <td class="sp-search-col">
@@ -574,8 +574,8 @@
                         <td class="sp-search-col">
                             <div class="sp-search-header">BitList</div>
                             <div class="sp-search-row">
-                                <input type="text" id="sp-n-input" placeholder="Advanced..." disabled style="opacity:0.5; cursor:not-allowed;" autocomplete="off" spellcheck="false" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" />
-                                <button id="sp-n-btn" disabled style="opacity:0.5; cursor:not-allowed;">Go</button>
+                                <input type="text" id="sp-n-input" placeholder="Advanced..." autocomplete="off" spellcheck="false" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" />
+                                <button id="sp-n-btn">Go</button>
                             </div>
                         </td>
                     </tr>
@@ -626,9 +626,9 @@
                     }
                 };
                 
-                bind('sp-s', q => `https://shadowpulse.live/reports/index.php?q=${encodeURIComponent(q)}`);
+                bind('sp-s', q => `https://shadowpulse.live/search?e=ShadowPulse&q=${encodeURIComponent(q)}`);
                 bind('sp-g', q => `https://www.google.com/search?q=site:bitcointalk.org ${encodeURIComponent(q)}`);
-                bind('sp-n', q => `https://ninjastic.space/search?q=${encodeURIComponent(q)}`);
+                bind('sp-n', q => `https://shadowpulse.live/search?e=BitList&q=${encodeURIComponent(q)}`);
             }
         },
 
