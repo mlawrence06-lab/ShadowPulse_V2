@@ -626,9 +626,9 @@
                     }
                 };
                 
-                bind('sp-s', q => `https://shadowpulse.live/search?e=ShadowPulse&q=${encodeURIComponent(q)}`);
+                bind('sp-s', q => `https://shadowpulse.live/search.php?e=ShadowPulse&q=${encodeURIComponent(q)}`);
                 bind('sp-g', q => `https://www.google.com/search?q=site:bitcointalk.org ${encodeURIComponent(q)}`);
-                bind('sp-n', q => `https://shadowpulse.live/search?e=BitList&q=${encodeURIComponent(q)}`);
+                bind('sp-n', q => `https://shadowpulse.live/search.php?e=BitList&q=${encodeURIComponent(q)}`);
             }
         },
 
