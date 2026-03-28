@@ -1142,10 +1142,10 @@
                  });
              });
 
-             // Wire Faucet Activity link with current pid
-             chrome.storage.local.get(['sp_public_id'], res => {
+             // Wire Faucet Activity link with uuid
+             chrome.storage.local.get(['sp_uuid'], res => {
                  const faLink = backdrop.querySelector('#sp-faucet-activity-link');
-                 if (faLink && res.sp_public_id) {
+                 if (faLink && res.sp_uuid) {
                      faLink.href = `https://shadowpulse.live/reports/faucet_activity.php?uuid=${encodeURIComponent(res.sp_uuid)}`;
                  }
              });
