@@ -455,6 +455,10 @@
             // Drag Logic
             this.initDrag(bar);
             
+            // Safety: Clear any stuck drag state from previous session
+            document.body.classList.remove('sp-dragging');
+            barHasMoved = false;
+            
             // Click Logic
              const logoZone = document.getElementById("sp-logo-zone");
              if(logoZone) {
@@ -462,6 +466,7 @@
                      // Check if we just finished dragging - if so, don't open settings
                      if (document.body.classList.contains("sp-dragging") || barHasMoved) {
                          barHasMoved = false; // Reset flag
+                         document.body.classList.remove('sp-dragging'); // Clear stuck state
                          return;
                      }
                      e.preventDefault(); e.stopPropagation();
@@ -663,7 +668,6 @@
             };
             
             const onEnd = () => {
-                if(!isDragging) return; // Safety check
                 isDragging = false;
                 bar.classList.remove('dragging');
                 document.body.classList.remove('sp-dragging');
@@ -671,18 +675,31 @@
                 window.removeEventListener('mouseup', onEnd, true);
                 window.removeEventListener('touchmove', onMove, {passive: false});
                 window.removeEventListener('touchend', onEnd);
+                window.removeEventListener('mouseleave', onEnd);
                 
                 if(hasMoved) {
                     chrome.storage.local.set({ sp_bar_pos: { left: bar.style.left, top: bar.style.top } });
                     barHasMoved = true; // Set module flag
                     // Reset after a short delay to allow click handler to check it
-                    setTimeout(() => barHasMoved = false, 100);
+                    setTimeout(() => { barHasMoved = false; }, 100);
                 }
             };
             
+            // Safety: clear drag state if mouse leaves window
+            window.addEventListener('mouseleave', onEnd);
+            
+            // Remove any existing listeners first to prevent duplicates
+            window.removeEventListener('mousemove', onMove, true);
+            window.removeEventListener('mouseup', onEnd, true);
+            window.removeEventListener('touchmove', onMove, {passive:false});
+            window.removeEventListener('touchend', onEnd);
+            
             const onStart = (e) => {
-                // Only start drag if clicking on the bar itself
+                // Only start drag if clicking on the bar itself (not buttons/inputs)
                 if(e.target.closest('.sp-settings-close')) return;
+                if(e.target.closest('button')) return;
+                if(e.target.closest('input')) return;
+                if(e.target.closest('a')) return;
                 if(!e.target.closest('#sp-floating-bar-root')) return;
                 
                 isDragging = true; hasMoved = false;
