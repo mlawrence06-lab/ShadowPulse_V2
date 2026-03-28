@@ -638,16 +638,26 @@
             let hasMoved = false;
             let dragOffsetX = 0;
             let dragOffsetY = 0;
+            let startX = 0;
+            let startY = 0;
+            const DRAG_THRESHOLD = 5; // pixels - must move more than this to count as drag
             
             const onMove = (e) => {
                 if(!isDragging) return;
-                // Only prevent default if we're actually dragging
-                e.preventDefault();
-                e.stopPropagation();
                 const clientX = e.touches ? e.touches[0].clientX : e.clientX;
                 const clientY = e.touches ? e.touches[0].clientY : e.clientY;
                 
-                hasMoved = true;
+                // Calculate distance from start
+                const dist = Math.sqrt(Math.pow(clientX - startX, 2) + Math.pow(clientY - startY, 2));
+                
+                // Only count as drag if moved more than threshold
+                if (dist > DRAG_THRESHOLD) {
+                    hasMoved = true;
+                    // Only prevent default if we're actually dragging (past threshold)
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+                
                 bar.style.left = (clientX - dragOffsetX) + 'px';
                 bar.style.top = (clientY - dragOffsetY) + 'px';
             };
@@ -678,6 +688,10 @@
                 isDragging = true; hasMoved = false;
                 const clientX = e.touches ? e.touches[0].clientX : e.clientX;
                 const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                
+                // Record start position for drag threshold calculation
+                startX = clientX;
+                startY = clientY;
                 
                 const rect = bar.getBoundingClientRect();
                 dragOffsetX = clientX - rect.left;
