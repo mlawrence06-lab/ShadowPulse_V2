@@ -20,12 +20,12 @@ const RETRY_OPTS = {
 };
 
 // --- HELPERS ---
-// AUDIT: Pauses execution for a given number of milliseconds, used to delay retry attempts.
+
 async function wait(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// AUDIT: Wraps the native fetch API with exponential backoff logic for resilience against temporary network/server failures.
+
 async function fetchWithRetry(url, options = {}, retries = RETRY_OPTS.retries) {
     try {
         const response = await fetch(url, options);
@@ -52,7 +52,7 @@ async function fetchWithRetry(url, options = {}, retries = RETRY_OPTS.retries) {
     }
 }
 
-// AUDIT: Primary message router that listens for commands from content scripts and executes network requests to bypass CORS restrictions.
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     try {
         if (request.type === "FETCH_STATS") {

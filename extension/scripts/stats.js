@@ -9,7 +9,7 @@
     let _heartbeatListener = null;
 
     window.SP.Stats = {
-        // AUDIT: Binds event listeners to the DOM to render the price and graph data when a heartbeat is received.
+        
         init: function(bar) {
             const priceEl = bar.querySelector('.sp-stats-price');
             const graphEl = bar.querySelector('.sp-stats-graph');
@@ -30,7 +30,7 @@
             document.addEventListener('sp-heartbeat', _heartbeatListener);
         },
 
-        // AUDIT: Draws an SVG sparkline graph and updates the live ticker price elements using the latest backend stats data.
+        
         render: function(priceEl, graphEl, data) {
             if (!priceEl || !graphEl) return;
             

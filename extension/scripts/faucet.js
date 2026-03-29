@@ -10,7 +10,7 @@
 
     window.SP.Faucet = {
         
-        // AUDIT: Queries the server to check if the user is eligible for a BTC faucet claim, triggering the gold logo state.
+        
         checkEligibility: function() {
             // Prevent multiple concurrent eligibility checks
             if (this._checkingEligibility) return;
@@ -51,7 +51,7 @@
                         // window.SP.Log.info(`Faucet waiting ${status.delay_remaining}s (Cheat System)`);
                         
                         if(faucetCheckTimer) clearTimeout(faucetCheckTimer);
-                        // FIX: Cap maximum delay to prevent memory issues with very long timers
+                        
                         const MAX_DELAY_SECONDS = 300; // 5 minutes max
                         const cappedDelay = Math.min(status.delay_remaining, MAX_DELAY_SECONDS);
                         faucetCheckTimer = setTimeout(() => {
@@ -75,7 +75,7 @@
             });
         },
 
-        // AUDIT: Resets the local faucet active state and clears any pending visual triggers.
+        
         reset: function() {
             isFaucetActiveLocal = false;
             if(faucetCheckTimer) clearTimeout(faucetCheckTimer);
@@ -85,15 +85,15 @@
             window.SP.UI.updateLogo(window.SP.LogoState.NORMAL);
         },
 
-        // AUDIT: Returns true if the faucet UI trigger is currently active for the user.
+        
         isActive: function() {
             return isFaucetActiveLocal;
         },
 
-        // AUDIT: Opens the external claim page for the user using their local storage identity parameters.
+        
         claim: function() {
             chrome.storage.local.get(['sp_public_id', 'sp_uuid'], res => {
-                // FIX: Validate identity before opening claim URL
+                
                 if (!res.sp_public_id || !res.sp_uuid) {
                     window.SP.Log.error("Cannot claim: missing identity");
                     alert("Error: Identity not found. Please refresh the page.");

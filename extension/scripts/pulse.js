@@ -3,7 +3,7 @@
     window.SP = window.SP || {};
 
     window.SP.Pulse = {
-        // AUDIT: Bootstraps the Pulse UI injection by waiting for the DOM to be ready before scanning the page.
+        
         init: function() {
               // Wait for DOM
               if (document.readyState === "loading") {
@@ -13,7 +13,7 @@
               }
         },
 
-        // AUDIT: Checks the current URL to determine if the user is on a Topic or Board page, skipping other forum actions.
+        
         scanPage: function() {
             const href = window.location.href;
             if (href.includes("action=") && !href.includes("action=profile")) return; // Skip most actions
@@ -28,7 +28,7 @@
             }
         },
 
-        // AUDIT: Extracts topic metadata, injects pulse buttons onto messages, and submits a topic view tracking event.
+        
         handleTopicPage: function() {
              const meta = this.getPageData();
              // inject buttons
@@ -38,7 +38,7 @@
              this.trackView('topic', meta);
         },
 
-        // AUDIT: Submits a board view tracking event when parsing a board directory.
+        
         handleBoardPage: function() {
             const bMatch = window.location.href.match(/board=(\d+)/);
             if (!bMatch) return;
@@ -48,7 +48,7 @@
             this.trackView('board', { boardId: bId, boardTitle: bTitle });
         },
 
-        // AUDIT: Communicates with the background Service Worker to securely track page views without triggering CORS.
+        
         trackView: function(type, meta) {
             window.SP.Utils.getState('sp_public_id').then(pid => {
                  window.SP.Utils.getState('sp_uuid').then(uuid => {
@@ -74,7 +74,7 @@
             });
         },
 
-        // AUDIT: Scrapes breadcrumbs, URLs, and table headers to derive the Topic ID, Board ID, and Titles.
+        
         getPageData: function() {
             const meta = {
                 topicId: "0",
@@ -120,7 +120,7 @@
             return meta;
         },
 
-        // AUDIT: Iterates through forum posts on the page, extracting metadata for each, and delegates the button injection.
+        
         injectPulseButtons: function(meta) {
             window.SP.Utils.getState('sp_show_pulse', true).then(show => {
                 if(!show) return;
@@ -142,7 +142,7 @@
                     if (!messageLink) return;
 
                     const actionContainer = messageLink.closest("div") || messageLink.parentElement;
-                    // FIX: containerTd is now the SUBJECT/METADATA cell (Left side) to place stats under "Merited by"
+                    
                     const containerTd = subjectDiv.closest("td");
 
                     // Desktop Metadata Extraction
@@ -216,7 +216,7 @@
             });
         },
 
-        // AUDIT: Modifies the DOM to insert a Pulse button and a statistics metadata row beneath the post author/merit block.
+        
         injectSinglePulseButton: function(meta, msgId, postTitle, postAuthor, postAuthorUid, actionContainer, containerTd) {
             // STRATEGY: DOM SEPARATION (The "Right Table" Fix)
             // 1. Buttons stay in `actionContainer` (The Button Div/Table)
@@ -326,7 +326,7 @@
             }
         },
 
-        // AUDIT: Constructs the HTML anchor element for the Pulse button and attaches its click event listener for voting.
+        
         createPulseButton: function(topicId, msgId, meta) {
              const btnPulse = window.SP.Utils.createEl("a", ["sp-pulse-btn"]);
              btnPulse.href = "#";
@@ -388,7 +388,7 @@
              return btnPulse;
         },
 
-        // AUDIT: Gathers all injected message IDs and fetches their aggregate pulse statistics in a single batch from the background worker.
+        
         collectAndFetchStats: function() {
             const allBtns = document.querySelectorAll(".sp-pulse-btn");
             const msgIds = Array.from(allBtns).map((b) => b.dataset.msgId).filter((id) => id && id !== "0");
@@ -421,7 +421,7 @@
         },
         
         // Called by Main.js on Heartbeat to flash a button
-        // AUDIT: Emits a visual CSS flash animation on a pulse button when triggered by a real-time polling response.
+        
         flashPulseButton: function(msgId) {
              const btn = document.querySelector(`.sp-pulse-btn[data-msg-id="${msgId}"]`);
              if (btn) {

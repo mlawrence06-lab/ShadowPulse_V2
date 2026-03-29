@@ -13,7 +13,7 @@
   });
 
   // Wait for Body
-  // FIX: Add max attempts to prevent infinite interval if body never appears
+  
   let bodyCheckAttempts = 0;
   const MAX_BODY_CHECK_ATTEMPTS = 200; // 10 seconds max (200 * 50ms)
   const waitForBody = setInterval(() => {
@@ -27,7 +27,7 @@
     }
   }, 50);
 
-  // AUDIT: Bootstraps the visual UI, logic hooks, and underlying identity/heartbeat loops on page load.
+  
   function init() {
     window.SP.Log.info(
       "ShadowPulse v" +
@@ -53,7 +53,7 @@
     });
   }
 
-  // AUDIT: Generates or retrieves unique identifiers for the user to securely interact with the backend APIs.
+  
   async function ensureIdentity() {
     const Utils = window.SP.Utils;
     const pid = await Utils.getState("sp_public_id");
@@ -69,12 +69,12 @@
     }
   }
 
-  // AUDIT: Initiates a recurring loop to pull user-specific statistics, pulses, and faucet status.
+  
   async function startHeartbeat() {
     const Config = window.SP.Config;
     let lastPulseTs = 0;
 
-    // AUDIT: Fires a safe background message to query the state API without triggering CORS faults.
+    
     async function beat() {
       // Pause heartbeat if the tab is backgrounded to prevent resource exhaustion and mobile crash
       if (document.visibilityState === "hidden") return;

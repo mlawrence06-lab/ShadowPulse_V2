@@ -32,7 +32,7 @@
     let barHasMoved = false; // Track if bar was just dragged
 
     // Helper Functions within Module Scope
-    // AUDIT: Minimal Bitcoin address validation. Only checks basic format.
+    
     // Invalid addresses are rejected and cleared.
     function validateBtcAddress(addr, btcInp, btcBtn) {
         if(!btcInp || !btcBtn) return false;
@@ -61,7 +61,7 @@
         }
     }
 
-    // AUDIT: Toggles the visibility of the BTC address input row within the settings modal.
+    
     function toggleBtcAddressRow(show, backdrop) {
         const btcAddrRow = backdrop.querySelector('#sp-btc-addr-row');
         const btcInp = backdrop.querySelector('#sp-btc-input');
@@ -79,7 +79,7 @@
     }
 
     // Theme Editor Logic
-    // AUDIT: Opens the theme editor modal, pulling current variables from local storage or defaults.
+    
     function openThemeEditor() {
         if(document.getElementById('sp-theme-editor-backdrop')) return;
         
@@ -110,7 +110,7 @@
             });
         });
 
-        // AUDIT: Renders the custom color picker UI and attaches real-time preview injection logic.
+        
         function renderEditor(startColors, currentMode, storageKey) {
             const backdropCtx = Utils.createEl('div', null, {
                 id: 'sp-theme-editor-backdrop',
@@ -307,7 +307,7 @@
 
     window.SP.UI = {
         
-        // AUDIT: Commits selected theme colors to CSS variables attached to the document body.
+        
         applyThemeLogic: function(themeMode) {
             // Only remove our specific custom properties, not all body styles
             const propertiesToClear = ['bg', 'text', 'link', 'cat_bg', 'cat_text', 'title_bg', 'window_bg', 'pulse_click'];
@@ -341,7 +341,7 @@
         },
 
         // --- LOGO STATE MANAGEMENT ---
-        // AUDIT: Animates and seamlessly transitions the central UI logo between normal, pulse, and faucet states.
+        
         updateLogo: function(targetState) {
             // State: NORMAL (SP), PULSE_BLUE (Blue Flash), FAUCET_GOLD (Gold/BTC)
             const container = document.getElementById('sp-logo-container');
@@ -391,7 +391,7 @@
             }
         },
 
-        // AUDIT: Constructs and injects the floating statistics bar into the forum's DOM.
+        
         injectFloatingBar: function() {
             const Utils = window.SP.Utils;
             
@@ -494,13 +494,13 @@
             }
         },
 
-        // AUDIT: Strips inline `font-family` styles from standard forum Trust score elements.
+        
         stripTrustScoreStyles: function() {
             const scores = document.querySelectorAll(".trustscore");
             scores.forEach((el) => el.removeAttribute("style"));
         },
 
-        // AUDIT: Corrects Trust Page inline fonts to ensure readability under dark mode settings.
+        
         fixTrustPageColors: function() {
             if (!window.location.href.includes('action=trust')) return;
             
@@ -516,7 +516,7 @@
             });
         },
 
-        // AUDIT: Scrapes the native Google Search UI block and cleanly injects the custom ShadowPulse search UI table.
+        
         injectSearchTable: function() {
             // STRICT CHECK: Only run on Search Page
             if (!window.location.href.includes('action=search')) return;
@@ -637,7 +637,7 @@
             }
         },
 
-        // AUDIT: Binds mouse drag listeners to the floating UI block, applying screen boundaries constraint math.
+        
         initDrag: function(bar) {
             let isDragging = false;
             let hasMoved = false;
@@ -728,7 +728,7 @@
             bar.addEventListener('touchstart', onStart, {passive:false});
         },
 
-        // AUDIT: Toggles the large settings modal visibility, dynamically constructing it if not attached.
+        
         openSettingsModal: function() {
              let backdrop = document.getElementById('sp-settings-root');
              if (backdrop) {
@@ -738,7 +738,7 @@
              this.createSettingsModal();
         },
 
-        // AUDIT: Builds the massive DOM tree required for the ShadowPulse user settings page.
+        
         createSettingsModal: function() {
               const Utils = window.SP.Utils;
               const backdrop = Utils.createEl('div', ['sp-settings-backdrop']);
@@ -956,7 +956,7 @@
                 window.addEventListener('touchend', onDragEnd);
         },
 
-        // AUDIT: Connects click and input listeners to the inputs embedded within the settings modal.
+        
         implementSettingsLogic: function(backdrop) {
              const Utils = window.SP.Utils;
              const Config = window.SP.Config;

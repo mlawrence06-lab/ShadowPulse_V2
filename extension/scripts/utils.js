@@ -24,17 +24,17 @@
 
     // --- LOGGING ---
     window.SP.Log = {
-        // AUDIT: Wraps console.log with an extension-specific prefix and ISO timestamp for contextual debugging.
+        
         info: function(...args) {
             const ts = new Date().toISOString();
             console.log("[ShadowPulse]", ts, ...args);
         },
-        // AUDIT: Wraps console.error with an extension-specific prefix and ISO timestamp for contextual error tracing.
+        
         error: function(...args) {
             const ts = new Date().toISOString();
             console.error("[ShadowPulse]", ts, ...args);
         },
-        // AUDIT: Outputs detailed system info to the console if debugging is enabled, and forwards telemetry to the background logger.
+        
         debug: function(isDebug, ...args) {
             if (!isDebug) return;
             const ts = new Date().toISOString();
@@ -53,7 +53,7 @@
 
     // --- HELPERS ---
     window.SP.Utils = {
-        // AUDIT: Standardized helper to create DOM elements, assign classes, and set attributes securely dynamically.
+        
         createEl: function(tag, classes = [], attrs = {}) {
             const el = document.createElement(tag);
             if (typeof classes === "string") {
@@ -67,7 +67,7 @@
             return el;
         },
         
-        // AUDIT: Safely wraps asynchronous Chrome local storage access to retrieve user preferences and states.
+        
         getState: async function(key, def) {
             return new Promise((resolve) => {
                 chrome.storage.local.get([key], (res) => {
@@ -76,14 +76,14 @@
             });
         },
 
-        // AUDIT: Safely wraps asynchronous Chrome local storage updates to save user preferences and states.
+        
         setState: async function(key, val) {
             return new Promise((resolve) => {
                 chrome.storage.local.set({ [key]: val }, resolve);
             });
         },
 
-        // AUDIT: Generates a randomized pseudonym for users missing a configured identity.
+        
         generateRandomId: function() {
             const adjectives = ["Crypto", "Digital", "Silent", "Neon", "Cyber", "Quantum", "Shadow", "Lunar", "Solar", "Cosmic", "Hyper", "Alpha", "Beta", "Omega", "Galactic", "Stellar", "Astral", "Atomic", "Sonic", "Mystic", "Satoshi", "Based", "Anon"];
             const nouns = ["Pulse", "Ninja", "Wizard", "Rider", "Ghost", "Dragon", "Phoenix", "Wolf", "Tiger", "Bear", "Eagle", "Falcon", "Hawk", "Shark", "Panther", "Lion", "Viper", "Cobra", "Fox", "Raven", "Whale", "Ape", "Punk"];
@@ -93,7 +93,7 @@
             return `${adj}-${noun}-${num}`;
         },
 
-        // AUDIT: Produces a robust v4 layout UUID using Crypto APIs, primarily used for device-agnostic identity mapping.
+        
         generateUUID: function() {
             if (typeof crypto !== 'undefined' && crypto.randomUUID) {
                 return crypto.randomUUID();
@@ -104,7 +104,7 @@
             );
         },
 
-        // AUDIT: Processes bulk updates to Chrome local storage symmetrically.
+        
         setLocalState: function(updates) {
              return new Promise((resolve) => {
                  chrome.storage.local.set(updates, resolve);
