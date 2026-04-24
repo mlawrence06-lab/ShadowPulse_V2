@@ -6,7 +6,7 @@
     let isFaucetActiveLocal = false;
     let faucetCheckTimer = null;
     let faucetTimeoutTimer = null;
-    const FAUCET_WINDOW_MS = 10000; // 10 seconds claim window
+    const FAUCET_WINDOW_MS = 15000; // 15 seconds claim window
 
     window.SP.Faucet = {
         
@@ -58,7 +58,8 @@
                             faucetCheckTimer = null;
                             // Guard: if reset() was called while we were waiting, abort
                             if (!isFaucetActiveLocal) return;
-                            window.SP.UI.updateLogo(window.SP.LogoState.FAUCET_GOLD);
+                            // Re-validate with server before showing gold
+                            window.SP.Faucet.checkEligibility();
                         }, cappedDelay * 1000);
                     } else {
                         isFaucetActiveLocal = false;

@@ -142,7 +142,11 @@
                 id: 'sp-theme-drag-handle',
                 style: 'padding: 15px; background: var(--sp-bg, #f0f0f0); border-bottom: 1px solid var(--sp-border, #cccccc); display: flex; justify-content: space-between; align-items: center; cursor: grab;'
             });
-            header.innerHTML = `<span style="font-weight: 600; font-size: 14px;">Editor: ${currentMode.toUpperCase()}</span>`;
+            const headerTitle = document.createElement('span');
+            headerTitle.style.fontWeight = '600';
+            headerTitle.style.fontSize = '14px';
+            headerTitle.textContent = `Editor: ${currentMode.toUpperCase()}`;
+            header.appendChild(headerTitle);
             const closeBtn = Utils.createEl('button', 'sp-settings-close', {
                 style: 'background: none; border: none; color: var(--sp-text-soft, #888); font-size: 16px; cursor: pointer;'
             });
@@ -355,8 +359,13 @@
             // Check if we need to swap SVG
             const wasGold = currentLogoState === window.SP.LogoState.FAUCET_GOLD;
             
-            if (isGold !== wasGold || container.innerHTML.trim() === "") {
-                 container.innerHTML = isGold ? BTC_LOGO_SVG : SP_LOGO_SVG;
+            if (isGold !== wasGold || container.childElementCount === 0) {
+                container.textContent = '';
+                const svgContent = isGold ? BTC_LOGO_SVG : SP_LOGO_SVG;
+                const parser = new DOMParser();
+                const svgDoc = parser.parseFromString(svgContent, 'image/svg+xml');
+                const svgElement = svgDoc.documentElement;
+                container.appendChild(svgElement);
             }
 
             // Update Logic
@@ -404,43 +413,83 @@
             const bar = Utils.createEl('div', ['sp-floating-bar']);
             bar.id = 'sp-floating-bar-root';
             
-            bar.innerHTML = `
-                <div class="sp-bar-content">
-                    <div class="sp-zone-logo" id="sp-logo-zone" title="Open Settings">
-                        <div class="sp-logo-circle" id="sp-logo-container">
-                            ${SP_LOGO_SVG}
-                        </div>
-                    </div>
-                    
-                    <div class="sp-zone-stats" id="sp-stats-zone">
-                         <div class="sp-stats-price">&nbsp;</div>
-                         <div class="sp-stats-graph"></div>
-                    </div>
-                </div>
-                </div>
-                <style>
-                    @keyframes sp-pulse-flash {
-                        0% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(59, 130, 246, 0)); }
-                        50% { transform: scale(1.15); filter: drop-shadow(0 0 15px rgba(59, 130, 246, 0.8)); }
-                        100% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(59, 130, 246, 0)); }
-                    }
-                    .sp-flash {
-                        animation: sp-pulse-flash 1s ease-in-out infinite;
-                    }
-                    .sp-pulse-anim {
-                        animation: sp-pulse-flash 1s ease-in-out infinite;
-                    }
-                </style>
+            // Build bar content safely using DOM methods
+            const barContent = Utils.createEl('div', ['sp-bar-content']);
+            
+            const logoZone = Utils.createEl('div', ['sp-zone-logo']);
+            logoZone.id = 'sp-logo-zone';
+            logoZone.title = 'Open Settings';
+            
+            const logoCircle = Utils.createEl('div', ['sp-logo-circle']);
+            logoCircle.id = 'sp-logo-container';
+            const parser = new DOMParser();
+            const svgDoc = parser.parseFromString(SP_LOGO_SVG, 'image/svg+xml');
+            logoCircle.appendChild(svgDoc.documentElement);
+            
+            logoZone.appendChild(logoCircle);
+            barContent.appendChild(logoZone);
+            
+            const statsZone = Utils.createEl('div', ['sp-zone-stats']);
+            statsZone.id = 'sp-stats-zone';
+            const statsPrice = Utils.createEl('div', ['sp-stats-price']);
+            statsPrice.textContent = '\u00A0';
+            const statsGraph = Utils.createEl('div', ['sp-stats-graph']);
+            statsZone.appendChild(statsPrice);
+            statsZone.appendChild(statsGraph);
+            barContent.appendChild(statsZone);
+            
+            bar.appendChild(barContent);
+            
+            // Add styles using DOM
+            const styleEl = document.createElement('style');
+            styleEl.textContent = `
+                @keyframes sp-pulse-flash {
+                    0% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(59, 130, 246, 0)); }
+                    50% { transform: scale(1.15); filter: drop-shadow(0 0 15px rgba(59, 130, 246, 0.8)); }
+                    100% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(59, 130, 246, 0)); }
+                }
+                .sp-flash {
+                    animation: sp-pulse-flash 1s ease-in-out infinite;
+                }
+                .sp-pulse-anim {
+                    animation: sp-pulse-flash 1s ease-in-out infinite;
+                }
             `;
+            bar.appendChild(styleEl);
 
             document.body.appendChild(bar);
             
             // Initialize Position
             // CRITICAL: We must explicitly set bottom/right to 'auto' to override CSS defaults
             chrome.storage.local.get(['sp_bar_pos'], res => {
+                const vw = window.innerWidth;
+                const vh = window.innerHeight;
+                const barWidth = 240; // Approximate bar width
+                const barHeight = 50; // Approximate bar height
+                
                 if (res.sp_bar_pos) {
-                    bar.style.left = res.sp_bar_pos.left;
-                    bar.style.top = res.sp_bar_pos.top;
+                    let left = parseInt(res.sp_bar_pos.left) || 0;
+                    let top = parseInt(res.sp_bar_pos.top) || 0;
+                    
+                    // SAFETY: Check if position is within visible viewport
+                    // Allow some margin (button can be partially off-screen but not lost)
+                    const minVisible = 20; // At least 20px must be visible
+                    const maxLeft = vw - minVisible;
+                    const maxTop = vh - minVisible;
+                    
+                    if (left > maxLeft || left < -barWidth + minVisible || 
+                        top > maxTop || top < -barHeight + minVisible) {
+                        // Reset to default position - button was lost off-screen
+                        window.SP.Log.warn('Button position was off-screen, resetting to default');
+                        const initRect = bar.getBoundingClientRect();
+                        bar.style.left = initRect.left + 'px';
+                        bar.style.top = initRect.top + 'px';
+                        // Clear the bad position
+                        chrome.storage.local.remove('sp_bar_pos');
+                    } else {
+                        bar.style.left = res.sp_bar_pos.left;
+                        bar.style.top = res.sp_bar_pos.top;
+                    }
                     bar.style.bottom = 'auto'; 
                     bar.style.right = 'auto';
                 } else {
@@ -460,9 +509,9 @@
             barHasMoved = false;
             
             // Click Logic
-             const logoZone = document.getElementById("sp-logo-zone");
-             if(logoZone) {
-                 logoZone.onclick = (e) =>{
+             const logoZoneEl = document.getElementById("sp-logo-zone");
+             if(logoZoneEl) {
+                 logoZoneEl.onclick = (e) =>{
                      // Check if we just finished dragging - if so, don't open settings
                      if (document.body.classList.contains("sp-dragging") || barHasMoved) {
                          barHasMoved = false; // Reset flag
@@ -1231,12 +1280,12 @@
                      const code = codeDisp.textContent;
                      if(code && code !== '...') {
                          navigator.clipboard.writeText(code).then(() => {
-                             const original = copyBtn.innerHTML;
+                             const originalText = copyBtn.textContent;
                              copyBtn.textContent = "COPIED";
                              copyBtn.style.color = "#22c55e";
                              copyBtn.style.fontSize = "10px";
                              setTimeout(() => {
-                                 copyBtn.innerHTML = original;
+                                 copyBtn.textContent = originalText;
                                  copyBtn.style.color = "";
                              }, 2000);
                          });

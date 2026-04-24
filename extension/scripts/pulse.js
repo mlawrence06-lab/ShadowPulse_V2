@@ -373,7 +373,14 @@
                                let match = text.match(/(\d+)/);
                                let count = match ? parseInt(match[1]) : 0;
                                let newCount = count + 1;
-                               statsRow.innerHTML = `<i><span style="color:green">Pulsed</span> by ${newCount} user${newCount === 1 ? "" : "s"}</i>`;
+                               statsRow.textContent = '';
+                               const italic = document.createElement('i');
+                               const greenSpan = document.createElement('span');
+                               greenSpan.style.color = 'green';
+                               greenSpan.textContent = 'Pulsed';
+                               italic.appendChild(greenSpan);
+                               italic.appendChild(document.createTextNode(` by ${newCount} user${newCount === 1 ? "" : "s"}`));
+                               statsRow.appendChild(italic);
                                statsRow.classList.add("smalltext");
                           }
                       } else {
@@ -406,7 +413,14 @@
                             if (stats.user_count > 0) {
                                 const statsRow = document.querySelector(`.sp-pulse-info-row[data-msg-id="${msgId}"]`);
                                 if (statsRow) {
-                                    statsRow.innerHTML = `<i><span style="color:green">Pulsed</span> by ${stats.user_count} user${stats.user_count === 1 ? "" : "s"}</i>`;
+                                    statsRow.textContent = '';
+                                    const italic = document.createElement('i');
+                                    const greenSpan = document.createElement('span');
+                                    greenSpan.style.color = 'green';
+                                    greenSpan.textContent = 'Pulsed';
+                                    italic.appendChild(greenSpan);
+                                    italic.appendChild(document.createTextNode(` by ${stats.user_count} user${stats.user_count === 1 ? "" : "s"}`));
+                                    statsRow.appendChild(italic);
                                     statsRow.classList.add("smalltext");
                                 }
                             }

@@ -115,12 +115,11 @@
             const startY = h - ((history[0].p - minP) / rangeP * (h - 2)) - 1;
             grid += `<line x1="0" y1="${startY}" x2="${w}" y2="${startY}" stroke="${color}" stroke-opacity="0.6" stroke-width="1.5" />`;
 
-            graphEl.innerHTML = `
-                <svg viewBox="0 0 ${w} ${h}" fill="none" style="overflow:visible; width:100%; height:100%;">
-                    ${grid}
-                    <path d="${pathD}" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-            `;
+            const svgContent = `<svg viewBox="0 0 ${w} ${h}" fill="none" style="overflow:visible; width:100%; height:100%;">${grid}<path d="${pathD}" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>`;
+            const parser = new DOMParser();
+            const svgDoc = parser.parseFromString(svgContent, 'image/svg+xml');
+            graphEl.textContent = '';
+            graphEl.appendChild(svgDoc.documentElement);
         }
     };
 

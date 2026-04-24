@@ -113,8 +113,8 @@
             const isBtc = val === 1 || val === "1" || val === true;
 
             if (isBtc) {
-              // Only trigger faucet for OTHER users — suppress for the sender to prevent cheating
-              if (!window.SP.Faucet.isActive() && lastPulseBy !== pid) {
+              // Faucet is time-based; all eligible users see it
+              if (!window.SP.Faucet.isActive()) {
                 window.SP.Faucet.checkEligibility();
               }
             } else {
@@ -130,6 +130,7 @@
               // New Pulse Detected!
               if (lastPulseBy !== pid) {
                 window.SP.UI.updateLogo(window.SP.LogoState.PULSE_BLUE);
+                window.SP.Pulse.flashPulseButton(data.msg_id);
               }
             }
 
