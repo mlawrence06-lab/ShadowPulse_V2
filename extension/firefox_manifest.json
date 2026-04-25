@@ -3,6 +3,18 @@
   "name": "ShadowPulse",
   "version": "2.3.2",
   "description": "BitcoinTalk Alternative Recognition Tool",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "shadowpulse@shadowpulse.live",
+      "strict_min_version": "109.0",
+      "data_collection_permissions": {
+        "required": ["authenticationInfo", "browsingActivity", "websiteActivity"]
+      }
+    },
+    "gecko_android": {
+      "strict_min_version": "113.0"
+    }
+  },
   "permissions": ["storage"],
   "host_permissions": [
     "*://bitcointalk.org/*",
@@ -10,8 +22,7 @@
     "https://shadowpulse.live/*"
   ],
   "background": {
-    "service_worker": "scripts/background.js",
-    "type": "module"
+    "scripts": ["scripts/background.js"]
   },
   "content_scripts": [
     {

@@ -1,0 +1,110 @@
+(function() {
+    "use strict";
+
+    window.SP = window.SP || {};
+    
+    let isFaucetActiveLocal = false;
+    let faucetCheckTimer = null;
+    let faucetTimeoutTimer = null;
+    const FAUCET_WINDOW_MS = 15000; // 15 seconds claim window
+
+    window.SP.Faucet = {
+        
+        
+        checkEligibility: function() {
+            // Prevent multiple concurrent eligibility checks
+            if (this._checkingEligibility) return;
+            this._checkingEligibility = true;
+            
+            chrome.storage.local.get(['sp_public_id', 'sp_uuid', 'sp_flash_logo'], res => {
+                if (res.sp_flash_logo === false) return; 
+                if (!res.sp_public_id || !res.sp_uuid) return;
+
+                const Config = window.SP.Config;
+                
+                fetch(`${Config.API_BASE_URL}/get_faucet_status.php?public_id=${res.sp_public_id}&uuid=${res.sp_uuid}&t=${Date.now()}`)
+                .then(r => {
+                    if (!r.ok) throw new Error("Server Error");
+                    return r.json();
+                })
+                .then(status => {
+                    if (!status) return;
+
+                    // Defensive Checks
+                    if (status.can_claim === true) {
+                        // TRIGGER GOLD
+                        isFaucetActiveLocal = true;
+                        window.SP.UI.updateLogo(window.SP.LogoState.FAUCET_GOLD);
+                        
+                        // Start 10-second claim window timer
+                        if (faucetTimeoutTimer) clearTimeout(faucetTimeoutTimer);
+                        faucetTimeoutTimer = setTimeout(() => {
+                            faucetTimeoutTimer = null;
+                            if (isFaucetActiveLocal) {
+                                window.SP.Faucet.reset();
+                            }
+                        }, FAUCET_WINDOW_MS);
+                    } else if (status.reason === 'wait_delay' && status.delay_remaining > 0) {
+                        // Anti-Cheat System Delay
+                        isFaucetActiveLocal = true; 
+                        // Only log if pertinent to debugging
+                        // window.SP.Log.info(`Faucet waiting ${status.delay_remaining}s (Cheat System)`);
+                        
+                        if(faucetCheckTimer) clearTimeout(faucetCheckTimer);
+                        
+                        const MAX_DELAY_SECONDS = 300; // 5 minutes max
+                        const cappedDelay = Math.min(status.delay_remaining, MAX_DELAY_SECONDS);
+                        faucetCheckTimer = setTimeout(() => {
+                            faucetCheckTimer = null;
+                            // Guard: if reset() was called while we were waiting, abort
+                            if (!isFaucetActiveLocal) return;
+                            // Re-validate with server before showing gold
+                            window.SP.Faucet.checkEligibility();
+                        }, cappedDelay * 1000);
+                    } else {
+                        isFaucetActiveLocal = false;
+                        window.SP.UI.updateLogo(window.SP.LogoState.NORMAL);
+                    }
+                })
+                .catch(e => {
+                    // Silent Fail - do not disturb user
+                    isFaucetActiveLocal = false;
+                })
+                .finally(() => {
+                    this._checkingEligibility = false;
+                });
+            });
+        },
+
+        
+        reset: function() {
+            isFaucetActiveLocal = false;
+            if(faucetCheckTimer) clearTimeout(faucetCheckTimer);
+            if(faucetTimeoutTimer) clearTimeout(faucetTimeoutTimer);
+            faucetCheckTimer = null;
+            faucetTimeoutTimer = null;
+            window.SP.UI.updateLogo(window.SP.LogoState.NORMAL);
+        },
+
+        
+        isActive: function() {
+            return isFaucetActiveLocal;
+        },
+
+        
+        claim: function() {
+            chrome.storage.local.get(['sp_public_id', 'sp_uuid'], res => {
+                
+                if (!res.sp_public_id || !res.sp_uuid) {
+                    window.SP.Log.error("Cannot claim: missing identity");
+                    alert("Error: Identity not found. Please refresh the page.");
+                    return;
+                }
+                const claimUrl = `https://shadowpulse.live/claim.php?voter_id=${encodeURIComponent(res.sp_public_id)}&uuid=${encodeURIComponent(res.sp_uuid)}`;
+                window.open(claimUrl, '_blank');
+                this.reset();
+            });
+        }
+    };
+
+})();
