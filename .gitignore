@@ -5,3 +5,7 @@
 /sql
 *.md
 AGENTS.md
+
+# Build artifacts
+*.zip
+extension/firefox_build/
