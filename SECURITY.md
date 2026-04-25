@@ -6,8 +6,8 @@ Currently, only the latest version of the ShadowPulse Extension and Backend API 
 
 | Version | Supported          |
 | ------- | ------------------ |
-| v2.0.x  | :white_check_mark: |
-| < 2.0.0 | :x:                |
+| v2.3.x  | :white_check_mark: |
+| < 2.3.0 | :x:                |
 
 ## Reporting a Vulnerability
 

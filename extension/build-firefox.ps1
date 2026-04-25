@@ -11,7 +11,7 @@ Set-Location $ScriptDir
 $ManifestPath = Join-Path $ScriptDir "firefox_manifest.json"
 $ManifestContent = Get-Content -Raw -Path $ManifestPath
 $VersionMatch = [regex]::Match($ManifestContent, '"version"\s*:\s*"([^"]+)"')
-$Version = if ($VersionMatch.Success) { $VersionMatch.Groups[1].Value } else { "2.3.0" }
+$Version = if ($VersionMatch.Success) { $VersionMatch.Groups[1].Value } else { "2.3.2" }
 
 Write-Host "========================================"
 Write-Host "ShadowPulse Firefox Build Script"
