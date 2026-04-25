@@ -1,8 +1,16 @@
+# === ShadowPulse V2 - Git Ignore Rules ===
+# Put all working/temp files in ./_work/ (gitignored below).
+# Only extension source code, CI config, and SECURITY.md belong in the repo.
+
 /.agent
 /backend
 /_private
 /assets
 /sql
+/_work
+/.playwright-mcp
+
+# Documentation (only SECURITY.md is tracked explicitly)
 *.md
 AGENTS.md
 
