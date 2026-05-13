@@ -1,21 +1,24 @@
 {
   "manifest_version": 3,
   "name": "ShadowPulse",
-  "version": "2.3.2",
+  "version": "2.4.0",
   "description": "BitcoinTalk Alternative Recognition Tool",
   "browser_specific_settings": {
     "gecko": {
       "id": "shadowpulse@shadowpulse.live",
-      "strict_min_version": "109.0",
-      "data_collection_permissions": {
-        "required": ["authenticationInfo", "browsingActivity", "websiteActivity"]
-      }
+      "strict_min_version": "109.0"
     },
     "gecko_android": {
       "strict_min_version": "113.0"
     }
   },
   "permissions": ["storage"],
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
   "host_permissions": [
     "*://bitcointalk.org/*",
     "https://shadowpulsev2.b-cdn.net/*",
@@ -27,12 +30,8 @@
   "content_scripts": [
     {
       "matches": ["*://bitcointalk.org/*"],
-      "js": ["scripts/theme_boot.js"],
-      "run_at": "document_start"
-    },
-    {
-      "matches": ["*://bitcointalk.org/*"],
       "js": [
+        "scripts/theme_boot.js",
         "scripts/utils.js",
         "scripts/ui.js",
         "scripts/faucet.js",
@@ -46,7 +45,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["scripts/config.js", "style/main.css"],
+      "resources": ["style/main.css"],
       "matches": ["*://bitcointalk.org/*"]
     }
   ]

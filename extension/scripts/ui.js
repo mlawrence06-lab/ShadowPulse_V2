@@ -47,7 +47,7 @@
         }
         
         // Minimal validation: starts with 1, 3, or bc1 and reasonable length
-        const isValid = /^(1|3|bc1)/.test(addr) && addr.length >= 26 && addr.length <= 90;
+        const isValid = /^(1|3|bc1[qp])/.test(addr) && addr.length >= 26 && addr.length <= 90;
         
         if (isValid) {
             btcInp.style.borderColor = '';
@@ -332,6 +332,7 @@
                          document.body.style.setProperty(varName, customObj[key]);
                     });
                     document.documentElement.setAttribute('data-sp-theme', 'custom');
+                    localStorage.setItem('sp_theme_sync', 'custom');
                 } else {
                     // No custom theme in storage - ensure we clear any lingering custom properties
                     // that might have been set by the theme editor preview
@@ -400,7 +401,8 @@
             const Utils = window.SP.Utils;
             
             chrome.storage.local.get(['sp_theme'], res => {
-                this.applyThemeLogic(res.sp_theme || 'light');
+                const fallback = localStorage.getItem('sp_theme_sync') || 'light';
+                this.applyThemeLogic(res.sp_theme || fallback);
             });
 
             if (document.getElementById('sp-floating-bar-root')) return;
@@ -441,10 +443,7 @@
                     50% { transform: scale(1.15); filter: drop-shadow(0 0 15px rgba(59, 130, 246, 0.8)); }
                     100% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(59, 130, 246, 0)); }
                 }
-                .sp-flash {
-                    animation: sp-pulse-flash 1s ease-in-out infinite;
-                }
-                .sp-pulse-anim {
+                #sp-logo-zone.sp-flash {
                     animation: sp-pulse-flash 1s ease-in-out infinite;
                 }
             `;
@@ -457,21 +456,20 @@
             chrome.storage.local.get(['sp_bar_pos'], res => {
                 const vw = window.innerWidth;
                 const vh = window.innerHeight;
-                const barWidth = 240; // Approximate bar width
-                const barHeight = 50; // Approximate bar height
+                const rect = bar.getBoundingClientRect();
+                const barWidth = rect.width || 64;
+                const barHeight = rect.height || 50;
                 
                 if (res.sp_bar_pos) {
                     let left = parseInt(res.sp_bar_pos.left) || 0;
                     let top = parseInt(res.sp_bar_pos.top) || 0;
                     
                     // SAFETY: Check if position is within visible viewport
-                    // Allow some margin (button can be partially off-screen but not lost)
-                    const minVisible = 20; // At least 20px must be visible
-                    const maxLeft = vw - minVisible;
-                    const maxTop = vh - minVisible;
+                    // At least minVisible pixels must be inside viewport on ALL edges
+                    const minVisible = 20;
                     
-                    if (left > maxLeft || left < -barWidth + minVisible || 
-                        top > maxTop || top < -barHeight + minVisible) {
+                    if (left > vw - minVisible || left + barWidth < minVisible || 
+                        top > vh - minVisible || top + barHeight < minVisible) {
                         // Reset to default position - button was lost off-screen
                         window.SP.Log.warn('Button position was off-screen, resetting to default');
                         const initRect = bar.getBoundingClientRect();
@@ -560,123 +558,117 @@
 
         
         injectSearchTable: function() {
-            // STRICT CHECK: Only run on Search Page
-            if (!window.location.href.includes('action=search')) return;
-
+            // STRICT CHECK: Only run on Search Form page, not search results
+            const url = window.location.href;
+            if (!url.includes('action=search')) return;
+            if (url.includes('action=search2')) return;
             const Utils = window.SP.Utils;
-            
-            // Find the Google Search form
+
+            // 1. Find the Google Search form (primary anchor for top placement)
             let googleForm = document.querySelector('form[action*="google"]');
             if (!googleForm) {
-                // Try finding by button value
                 const btns = document.querySelectorAll('input[type="submit"], input[type="button"], button');
                 for (let b of btns) {
-                    if ((b.value && b.value.toLowerCase().includes('google')) || 
+                    if ((b.value && b.value.toLowerCase().includes('google')) ||
                         (b.textContent && b.textContent.toLowerCase().includes('google'))) {
                         googleForm = b.closest('form');
                         if (googleForm) break;
                     }
                 }
             }
-            
-            let targetContainer = null;
+
+            // 2. Fallback: main forum search form
             let searchFormFallback = null;
-            
-            if (googleForm) {
-                // We'll replace googleForm specifically
-                targetContainer = googleForm.parentElement;
-            } else {
-                // Fallback: look for the main search form but NOT the quick search one in the header
+            if (!googleForm) {
                 let searchForm = document.getElementById('searchform');
                 if (!searchForm) {
                     const forms = document.querySelectorAll('form[action*="action=search2"]');
                     for (let f of forms) {
                         if (f.id !== 'search_form' && !f.closest('#header')) {
-                             searchForm = f; break;
+                            searchForm = f; break;
                         }
                     }
                 }
                 if (searchForm) searchFormFallback = searchForm;
             }
 
-            if (targetContainer || searchFormFallback) {
-                const table = Utils.createEl('table', ['sp-search-table']);
-                table.id = 'sp-search-table';
-                table.innerHTML = `
-                    <tr>
-                        <td class="sp-search-col">
-                            <div class="sp-search-header">ShadowPulse</div>
-                            <div class="sp-search-row">
-                                <input type="text" id="sp-s-input" placeholder="Search Forum..." autocomplete="off" spellcheck="false" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" />
-                                <button id="sp-s-btn">Go</button>
-                            </div>
-                        </td>
-                        <td class="sp-search-col">
-                            <div class="sp-search-header">Google</div>
-                            <div class="sp-search-row">
-                                <input type="text" id="sp-g-input" placeholder="Site Search..." autocomplete="off" spellcheck="false" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" />
-                                <button id="sp-g-btn">Go</button>
-                            </div>
-                        </td>
-                        <td class="sp-search-col">
-                            <div class="sp-search-header">BitList</div>
-                            <div class="sp-search-row">
-                                <input type="text" id="sp-n-input" placeholder="Advanced..." autocomplete="off" spellcheck="false" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" />
-                                <button id="sp-n-btn">Go</button>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-                
-                if (googleForm) {
-                    // Remove the old Google instructions and header above the form
-                    let node = googleForm.previousSibling;
-                    while (node) {
-                        let prevNode = node.previousSibling;
-                        const nn = node.nodeName.toUpperCase();
-                        
-                        if (node.nodeType === Node.TEXT_NODE || nn === 'BR') {
-                            node.remove();
-                        } else if (nn === 'B' || nn === 'STRONG') {
-                            if (node.textContent.toLowerCase().includes('google')) {
-                                node.remove(); // Remove the "Google Search" title
-                                break;
-                            }
-                            node.remove();
-                        } else {
-                            break; // Stop if we hit a hr, div, table, etc.
-                        }
-                        node = prevNode;
-                    }
-                    
-                    googleForm.parentNode.insertBefore(table, googleForm);
-                    googleForm.remove();
-                } else if (searchFormFallback) {
-                    searchFormFallback.parentElement.prepend(table);
-                }
+            if (!googleForm && !searchFormFallback) return;
 
-                // Bind Logic
-                const bind = (id, urlFn) => {
-                    const btn = table.querySelector('#' + id + '-btn');
-                    const inp = table.querySelector('#' + id + '-input');
-                    if(btn && inp) {
-                        btn.onclick = (e) => {
-                            e.preventDefault();
-                            if(inp.value.trim()) window.open(urlFn(inp.value.trim()), '_blank');
-                        };
-                        inp.onkeydown = (e) => {
-                            if(e.key === 'Enter') {
-                                e.preventDefault();
-                                btn.click();
-                            }
-                        };
+            // 3. Build table
+            const table = Utils.createEl('table', ['sp-search-table']);
+            table.id = 'sp-search-table';
+            table.innerHTML = `
+                <tr>
+                    <td class="sp-search-col">
+                        <div class="sp-search-header">BPIP</div>
+                        <div class="sp-search-row">
+                            <input type="text" id="sp-s-input" placeholder="Search name or userID" autocomplete="off" spellcheck="false" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" />
+                            <button id="sp-s-btn">Go</button>
+                        </div>
+                    </td>
+                    <td class="sp-search-col">
+                        <div class="sp-search-header">Google</div>
+                        <div class="sp-search-row">
+                            <input type="text" id="sp-g-input" placeholder="Site Search..." autocomplete="off" spellcheck="false" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" />
+                            <button id="sp-g-btn">Go</button>
+                        </div>
+                    </td>
+                    <td class="sp-search-col">
+                        <div class="sp-search-header">BitList</div>
+                        <div class="sp-search-row">
+                            <input type="text" id="sp-n-input" placeholder="Advanced..." autocomplete="off" spellcheck="false" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" />
+                            <button id="sp-n-btn">Go</button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+
+            // 4. Insert where Google form was (top) or prepend to search form fallback
+            if (googleForm) {
+                let node = googleForm.previousSibling;
+                while (node) {
+                    let prevNode = node.previousSibling;
+                    const nn = node.nodeName.toUpperCase();
+                    if (node.nodeType === Node.TEXT_NODE || nn === 'BR') {
+                        node.remove();
+                    } else if (nn === 'B' || nn === 'STRONG') {
+                        if (node.textContent.toLowerCase().includes('google')) {
+                            node.remove();
+                            break;
+                        }
+                        node.remove();
+                    } else {
+                        break;
                     }
-                };
-                
-                bind('sp-s', q => `https://shadowpulse.live/search?e=ShadowPulse&q=${encodeURIComponent(q)}`);
-                bind('sp-g', q => `https://www.google.com/search?q=site:bitcointalk.org ${encodeURIComponent(q)}`);
-                bind('sp-n', q => `https://shadowpulse.live/search?e=BitList&q=${encodeURIComponent(q)}`);
+                    node = prevNode;
+                }
+                googleForm.parentNode.insertBefore(table, googleForm);
+                googleForm.remove();
+            } else if (searchFormFallback) {
+                searchFormFallback.parentElement.prepend(table);
             }
+
+            // 6. Bind Logic
+            const bind = (id, urlFn) => {
+                const btn = table.querySelector('#' + id + '-btn');
+                const inp = table.querySelector('#' + id + '-input');
+                if(btn && inp) {
+                    btn.onclick = (e) => {
+                        e.preventDefault();
+                        if(inp.value.trim()) window.open(urlFn(inp.value.trim()), '_blank');
+                    };
+                    inp.onkeydown = (e) => {
+                        if(e.key === 'Enter') {
+                            e.preventDefault();
+                            btn.click();
+                        }
+                    };
+                }
+            };
+
+            bind('sp-s', q => `https://bpip.org/search.aspx?q=${encodeURIComponent(q)}`);
+            bind('sp-g', q => `https://www.google.com/search?q=site:bitcointalk.org ${encodeURIComponent(q)}`);
+            bind('sp-n', q => `${window.SP.Config.BASE_URL}/search?e=BitList&q=${encodeURIComponent(q)}`);
         },
 
         
@@ -700,13 +692,11 @@
                 // Only count as drag if moved more than threshold
                 if (dist > DRAG_THRESHOLD) {
                     hasMoved = true;
-                    // Only prevent default if we're actually dragging (past threshold)
                     e.preventDefault();
                     e.stopPropagation();
+                    bar.style.left = (clientX - dragOffsetX) + 'px';
+                    bar.style.top = (clientY - dragOffsetY) + 'px';
                 }
-                
-                bar.style.left = (clientX - dragOffsetX) + 'px';
-                bar.style.top = (clientY - dragOffsetY) + 'px';
             };
             
             const onEnd = () => {
@@ -758,6 +748,11 @@
                 
                 bar.classList.add('dragging');
                 document.body.classList.add('sp-dragging');
+                
+                // Prevent browser scroll interference on mobile
+                if (e.type === 'touchstart') {
+                    e.preventDefault();
+                }
                 
                 // Use capture phase to ensure we get events first
                 window.addEventListener('mousemove', onMove, true);
@@ -878,8 +873,8 @@
                         </div>
 
                         <div class="sp-settings-row" style="justify-content:center; gap:14px; margin-top:8px;">
-                             <a href="https://shadowpulse.live/reports/" target="_blank" class="sp-link">Report Center</a>
-                             <a href="https://shadowpulse.live/reports/faucet_activity.php" id="sp-faucet-activity-link" target="_blank" class="sp-link">Faucet Activity</a>
+                             <a href="${window.SP.Config.BASE_URL}/reports/" target="_blank" class="sp-link">Report Center</a>
+                             <a href="${window.SP.Config.BASE_URL}/reports/faucet_activity.php" id="sp-faucet-activity-link" target="_blank" class="sp-link">Faucet Activity</a>
                         </div>
 
                         <hr class="sp-sep" />
@@ -1200,7 +1195,7 @@
              chrome.storage.local.get(['sp_uuid'], res => {
                  const faLink = backdrop.querySelector('#sp-faucet-activity-link');
                  if (faLink && res.sp_uuid) {
-                     faLink.href = `https://shadowpulse.live/reports/faucet_activity.php?uuid=${encodeURIComponent(res.sp_uuid)}`;
+                     faLink.href = `${window.SP.Config.BASE_URL}/reports/faucet_activity.php?uuid=${encodeURIComponent(res.sp_uuid)}`;
                  }
              });
 
@@ -1227,7 +1222,7 @@
                                  
                                  if(upLink && d.available_upgrades > 0 && res.sp_uuid) {
                                      upLink.style.display = 'flex';
-                                     upLink.href = `https://shadowpulse.live/reports/upgrade.php?id=${res.sp_uuid}`;
+                                     upLink.href = `${window.SP.Config.BASE_URL}/reports/upgrade.php?id=${res.sp_uuid}`;
                                  } else if (upLink) {
                                      upLink.style.display = 'none';
                                  }
@@ -1324,14 +1319,15 @@
                  resBtn.textContent = '...';
                  
                  // Get current local BTC Address to preserve it if server returns null
-                 chrome.storage.local.get(['sp_btc_address'], localRes => {
+                 chrome.storage.local.get(['sp_btc_address', 'sp_theme'], localRes => {
                      chrome.runtime.sendMessage({ type: "RECOVER_IDENTITY", uuid: code }, resp => {
                          if(resp && resp.success && resp.data.status === 'success') {
                              chrome.storage.local.set({
                                  sp_uuid: code,
                                  sp_public_id: resp.data.data.public_id,
                                  // Prefer server, fallback to local, then empty
-                                 sp_btc_address: resp.data.data.btc_address || localRes.sp_btc_address || ""
+                                 sp_btc_address: resp.data.data.btc_address || localRes.sp_btc_address || "",
+                                 sp_theme: localRes.sp_theme || 'light'
                              }, () => {
                                  resBtn.textContent = 'Success';
                                  setTimeout(() => window.location.reload(), 500);

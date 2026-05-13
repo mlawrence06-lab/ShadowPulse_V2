@@ -344,7 +344,11 @@
                  btnPulse.classList.add("sp-flash", "sp-pulse-clicked");
                  setTimeout(() => btnPulse.classList.remove("sp-flash", "sp-pulse-clicked"), 1000);
                  
-                 const pid = await window.SP.Utils.getState('sp_public_id');
+                 // Set self-pulse flag IMMEDIATELY (before async) so heartbeat race is covered
+                 window.SP.Pulse._selfPulseTs = Date.now();
+                 window.SP.Pulse._selfPulseMsgId = msgId;
+                 
+                 let pid = await window.SP.Utils.getState('sp_public_id');
                  const uuid = await window.SP.Utils.getState('sp_uuid');
                  
                  window.SP.Log.info(`Pulsing Topic:${topicId} Msg:${msgId}...`);
@@ -367,6 +371,16 @@
                     payload: payload,
                   }, response => {
                       if (response && response.success) {
+                          // Sync identity if server used a different public_id
+                          if (response.data && response.data.voter_id && response.data.voter_id !== pid) {
+                              window.SP.Log.warn('Identity sync: updating sp_public_id to match server');
+                              window.SP.Utils.setState('sp_public_id', response.data.voter_id);
+                              pid = response.data.voter_id;
+                          }
+                          // Update self-pulse timestamp with server time for accuracy
+                          window.SP.Pulse._selfPulseTs = response.data && response.data.timestamp ? response.data.timestamp : Date.now();
+                          setTimeout(() => { window.SP.Pulse._selfPulseTs = null; window.SP.Pulse._selfPulseMsgId = null; }, 8000);
+
                           const statsRow = document.querySelector(`.sp-pulse-info-row[data-msg-id="${msgId}"]`);
                           if(statsRow) {
                                let text = statsRow.textContent;
@@ -384,7 +398,9 @@
                                statsRow.classList.add("smalltext");
                           }
                       } else {
-                          // Error Flash
+                          // Error Flash — clear self-pulse flag so we don't suppress real pulses
+                          window.SP.Pulse._selfPulseTs = null;
+                          window.SP.Pulse._selfPulseMsgId = null;
                           btnPulse.classList.remove("sp-flash", "sp-pulse-clicked");
                           void btnPulse.offsetWidth;
                           btnPulse.classList.add("sp-flash-error");

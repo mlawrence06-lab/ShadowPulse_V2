@@ -15,6 +15,7 @@
 
     window.SP.Config = {
         API_BASE_URL: "https://shadowpulse.live/api",
+        BASE_URL: "https://shadowpulse.live",
         STATS_URL: "https://shadowpulsev2.b-cdn.net/stats.json",
         POLLING_INTERVAL: 5000,
         FLASH_COOLDOWN: 5000,
@@ -33,6 +34,11 @@
         error: function(...args) {
             const ts = new Date().toISOString();
             console.error("[ShadowPulse]", ts, ...args);
+        },
+
+        warn: function(...args) {
+            const ts = new Date().toISOString();
+            console.warn("[ShadowPulse]", ts, ...args);
         },
         
         debug: function(isDebug, ...args) {

@@ -29,6 +29,11 @@
 
   
   function init() {
+    // Clean up any stale extension UI from previous loads or older versions
+    document.getElementById('sp-search-table')?.remove();
+    document.getElementById('sp-floating-bar-root')?.remove();
+    document.getElementById('sp-settings-root')?.remove();
+
     window.SP.Log.info(
       "ShadowPulse v" +
         chrome.runtime.getManifest().version +
@@ -128,7 +133,12 @@
           try {
             if (lastPulseTs !== 0 && newPulseTs > lastPulseTs) {
               // New Pulse Detected!
-              if (lastPulseBy !== pid) {
+              // Suppress flash if this was our own pulse (within last 8s)
+              const selfPulseTs = window.SP.Pulse && window.SP.Pulse._selfPulseTs ? window.SP.Pulse._selfPulseTs : null;
+              const selfPulseMsgId = window.SP.Pulse && window.SP.Pulse._selfPulseMsgId ? window.SP.Pulse._selfPulseMsgId : null;
+              const isSelfPulse = (selfPulseMsgId && selfPulseMsgId === data.msg_id) ||
+                                  (selfPulseTs && Math.abs(newPulseTs - selfPulseTs) < 100);
+              if (!isSelfPulse && lastPulseBy !== pid) {
                 window.SP.UI.updateLogo(window.SP.LogoState.PULSE_BLUE);
                 window.SP.Pulse.flashPulseButton(data.msg_id);
               }

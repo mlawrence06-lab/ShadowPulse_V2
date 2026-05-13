@@ -132,6 +132,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
              return true;
         }
 
+        if (request.type === "GET_FAUCET_STATUS") {
+            const { public_id, uuid } = request.payload || {};
+            fetchWithRetry(`${CONFIG.API_BASE_URL}/get_faucet_status.php?public_id=${encodeURIComponent(public_id)}&uuid=${encodeURIComponent(uuid)}&t=${Date.now()}`, {}, 1)
+               .then(res => res.json())
+               .then(data => sendResponse({ success: true, data: data }))
+               .catch(err => sendResponse({ success: false, error: err.message }));
+            return true;
+        }
+
         if (request.type === "GET_LATEST_PULSE") {
             const voterId = request.voter_id || '';
             fetchWithRetry(`${CONFIG.API_BASE_URL}/get_latest_pulse.php?t=${Date.now()}&voter_id=${encodeURIComponent(voterId)}`, {}, 1)

@@ -57,12 +57,19 @@ foreach ($file in $FilesToCopy) {
     }
 }
 
-Write-Host "[3/5] Copying styles..."
+Write-Host "[3/5] Copying styles and assets..."
 $CssSource = Join-Path $ScriptDir "style/main.css"
 $CssDest = Join-Path $BuildDir "style/main.css"
 if (Test-Path $CssSource) {
     Copy-Item -Path $CssSource -Destination $CssDest -Force
     Write-Host "      Copied: style/main.css"
+}
+
+$IconsSource = Join-Path $ScriptDir "icons"
+$IconsDest = Join-Path $BuildDir "icons"
+if (Test-Path $IconsSource) {
+    Copy-Item -Path $IconsSource -Destination $IconsDest -Recurse -Force
+    Write-Host "      Copied: icons/"
 }
 
 Write-Host "[4/5] Installing Firefox-specific files..."

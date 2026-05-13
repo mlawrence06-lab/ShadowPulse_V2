@@ -261,7 +261,6 @@ html[data-sp-theme="custom"],
 [data-sp-theme="custom"] .smalltext,
 [data-sp-theme="custom"] .middletext,
 [data-sp-theme="custom"] .nav,
-[data-sp-theme="custom"] .nav,
 [data-sp-theme="custom"] body {
   color: var(--sp-forum-text, #000000) !important;
 }
@@ -398,6 +397,11 @@ html[data-sp-theme="custom"] select {
   /* Initial Position */
   bottom: 20px;
   left: 20px;
+
+  /* Mobile: prevent browser scroll hijack */
+  touch-action: none;
+  /* Prevent overflow on narrow viewports */
+  max-width: calc(100vw - 40px);
 
   /* Glassmorphism */
   background: var(--sp-bg-elevated);
@@ -765,6 +769,7 @@ html[data-sp-theme="custom"] select {
   margin-bottom: 20px;
   border-collapse: separate;
   border-spacing: 12px;
+  table-layout: fixed;
 }
 .sp-search-col {
   background: var(--sp-bg-elevated, #e8f4ff);
@@ -774,6 +779,7 @@ html[data-sp-theme="custom"] select {
   text-align: center;
   vertical-align: top;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  width: 33.33%;
 }
 .sp-search-header {
   font-weight: 700;

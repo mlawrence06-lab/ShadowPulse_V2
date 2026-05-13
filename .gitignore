@@ -17,3 +17,11 @@ AGENTS.md
 # Build artifacts
 *.zip
 extension/firefox_build/
+firefox_build/
+
+# Root-level duplicates (canonical source is in extension/)
+/scripts
+/style
+/manifest.json
+/firefox_manifest.json
+/build-firefox.ps1

@@ -15,28 +15,32 @@
             // Prevent multiple concurrent eligibility checks
             if (this._checkingEligibility) return;
             this._checkingEligibility = true;
+
+            const done = () => { this._checkingEligibility = false; };
             
             chrome.storage.local.get(['sp_public_id', 'sp_uuid', 'sp_flash_logo'], res => {
-                if (res.sp_flash_logo === false) return; 
-                if (!res.sp_public_id || !res.sp_uuid) return;
+                if (res.sp_flash_logo === false) { done(); return; }
+                if (!res.sp_public_id || !res.sp_uuid) { done(); return; }
 
-                const Config = window.SP.Config;
-                
-                fetch(`${Config.API_BASE_URL}/get_faucet_status.php?public_id=${res.sp_public_id}&uuid=${res.sp_uuid}&t=${Date.now()}`)
-                .then(r => {
-                    if (!r.ok) throw new Error("Server Error");
-                    return r.json();
-                })
-                .then(status => {
-                    if (!status) return;
+                chrome.runtime.sendMessage({
+                    type: 'GET_FAUCET_STATUS',
+                    payload: { public_id: res.sp_public_id, uuid: res.sp_uuid }
+                }, result => {
+                    if (!result || !result.success || !result.data) {
+                        isFaucetActiveLocal = false;
+                        done();
+                        return;
+                    }
+
+                    const status = result.data;
 
                     // Defensive Checks
                     if (status.can_claim === true) {
                         // TRIGGER GOLD
                         isFaucetActiveLocal = true;
                         window.SP.UI.updateLogo(window.SP.LogoState.FAUCET_GOLD);
-                        
-                        // Start 10-second claim window timer
+
+                        // Start claim window timer
                         if (faucetTimeoutTimer) clearTimeout(faucetTimeoutTimer);
                         faucetTimeoutTimer = setTimeout(() => {
                             faucetTimeoutTimer = null;
@@ -46,12 +50,13 @@
                         }, FAUCET_WINDOW_MS);
                     } else if (status.reason === 'wait_delay' && status.delay_remaining > 0) {
                         // Anti-Cheat System Delay
-                        isFaucetActiveLocal = true; 
-                        // Only log if pertinent to debugging
-                        // window.SP.Log.info(`Faucet waiting ${status.delay_remaining}s (Cheat System)`);
-                        
+                        isFaucetActiveLocal = true;
+                        // Clear any stale claim timeout when entering wait_delay
+                        if (faucetTimeoutTimer) clearTimeout(faucetTimeoutTimer);
+                        faucetTimeoutTimer = null;
+
                         if(faucetCheckTimer) clearTimeout(faucetCheckTimer);
-                        
+
                         const MAX_DELAY_SECONDS = 300; // 5 minutes max
                         const cappedDelay = Math.min(status.delay_remaining, MAX_DELAY_SECONDS);
                         faucetCheckTimer = setTimeout(() => {
@@ -65,13 +70,7 @@
                         isFaucetActiveLocal = false;
                         window.SP.UI.updateLogo(window.SP.LogoState.NORMAL);
                     }
-                })
-                .catch(e => {
-                    // Silent Fail - do not disturb user
-                    isFaucetActiveLocal = false;
-                })
-                .finally(() => {
-                    this._checkingEligibility = false;
+                    done();
                 });
             });
         },
@@ -93,6 +92,10 @@
 
         
         claim: function() {
+            if (!isFaucetActiveLocal) {
+                window.SP.Log.warn("Claim called while faucet is not active");
+                return;
+            }
             chrome.storage.local.get(['sp_public_id', 'sp_uuid'], res => {
                 
                 if (!res.sp_public_id || !res.sp_uuid) {
@@ -100,7 +103,8 @@
                     alert("Error: Identity not found. Please refresh the page.");
                     return;
                 }
-                const claimUrl = `https://shadowpulse.live/claim.php?voter_id=${encodeURIComponent(res.sp_public_id)}&uuid=${encodeURIComponent(res.sp_uuid)}`;
+                const baseUrl = window.SP.Config.API_BASE_URL.replace('/api', '');
+                const claimUrl = `${baseUrl}/claim.php?voter_id=${encodeURIComponent(res.sp_public_id)}&uuid=${encodeURIComponent(res.sp_uuid)}`;
                 window.open(claimUrl, '_blank');
                 this.reset();
             });
