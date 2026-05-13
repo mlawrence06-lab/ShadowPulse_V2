@@ -313,6 +313,10 @@
         
         
         applyThemeLogic: function(themeMode) {
+            // Clear emergency background set by theme_boot.js to prevent FOUC
+            document.documentElement.style.backgroundColor = '';
+            document.documentElement.style.color = '';
+            
             // Only remove our specific custom properties, not all body styles
             const propertiesToClear = ['bg', 'text', 'link', 'cat_bg', 'cat_text', 'title_bg', 'window_bg', 'pulse_click'];
             propertiesToClear.forEach(key => {
