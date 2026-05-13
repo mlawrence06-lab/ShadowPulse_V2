@@ -136,9 +136,9 @@
               // Suppress flash if this was our own pulse (within last 8s)
               const selfPulseTs = window.SP.Pulse && window.SP.Pulse._selfPulseTs ? window.SP.Pulse._selfPulseTs : null;
               const selfPulseMsgId = window.SP.Pulse && window.SP.Pulse._selfPulseMsgId ? window.SP.Pulse._selfPulseMsgId : null;
-              const isSelfPulse = (selfPulseMsgId && selfPulseMsgId === data.msg_id) ||
+              const isSelfPulse = (selfPulseMsgId && String(selfPulseMsgId) === String(data.msg_id)) ||
                                   (selfPulseTs && Math.abs(newPulseTs - selfPulseTs) < 100);
-              if (!isSelfPulse && lastPulseBy !== pid) {
+              if (!isSelfPulse && String(lastPulseBy) !== String(pid)) {
                 window.SP.UI.updateLogo(window.SP.LogoState.PULSE_BLUE);
                 window.SP.Pulse.flashPulseButton(data.msg_id);
               }
