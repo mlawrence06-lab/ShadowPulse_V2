@@ -372,7 +372,7 @@
                   }, response => {
                       if (response && response.success) {
                           // Sync identity if server used a different public_id
-                          if (response.data && response.data.voter_id && response.data.voter_id !== pid) {
+                          if (response.data && response.data.voter_id && String(response.data.voter_id) !== String(pid)) {
                               window.SP.Log.warn('Identity sync: updating sp_public_id to match server');
                               window.SP.Utils.setState('sp_public_id', response.data.voter_id);
                               pid = response.data.voter_id;
@@ -393,7 +393,7 @@
                                greenSpan.style.color = 'green';
                                greenSpan.textContent = 'Pulsed';
                                italic.appendChild(greenSpan);
-                               italic.appendChild(document.createTextNode(` by ${newCount} user${newCount === 1 ? "" : "s"}`));
+                               italic.appendChild(document.createTextNode(` by ${newCount} user${newCount == 1 ? "" : "s"}`));
                                statsRow.appendChild(italic);
                                statsRow.classList.add("smalltext");
                           }
@@ -435,7 +435,7 @@
                                     greenSpan.style.color = 'green';
                                     greenSpan.textContent = 'Pulsed';
                                     italic.appendChild(greenSpan);
-                                    italic.appendChild(document.createTextNode(` by ${stats.user_count} user${stats.user_count === 1 ? "" : "s"}`));
+                                    italic.appendChild(document.createTextNode(` by ${stats.user_count} user${stats.user_count == 1 ? "" : "s"}`));
                                     statsRow.appendChild(italic);
                                     statsRow.classList.add("smalltext");
                                 }

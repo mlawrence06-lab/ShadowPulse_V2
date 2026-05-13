@@ -1216,8 +1216,9 @@
                                  const powEl = backdrop.querySelector('#sp-stat-power');
                                  const upLink = backdrop.querySelector('#sp-upgrade-link');
 
-                                 if(powEl && d.pulse_power) {
-                                     powEl.textContent = parseFloat(d.pulse_power).toFixed(2);
+                                 if(powEl && d.pulse_power !== undefined && d.pulse_power !== null) {
+                                     const val = parseFloat(d.pulse_power);
+                                     powEl.textContent = isNaN(val) ? '0.00' : val.toFixed(2);
                                  }
                                  
                                  if(upLink && d.available_upgrades > 0 && res.sp_uuid) {

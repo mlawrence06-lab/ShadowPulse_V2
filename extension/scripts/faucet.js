@@ -35,7 +35,7 @@
                     const status = result.data;
 
                     // Defensive Checks
-                    if (status.can_claim === true) {
+                    if (status.can_claim === true || status.can_claim === 1 || status.can_claim === '1') {
                         // TRIGGER GOLD
                         isFaucetActiveLocal = true;
                         window.SP.UI.updateLogo(window.SP.LogoState.FAUCET_GOLD);
