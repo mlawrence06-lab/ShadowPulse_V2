@@ -379,7 +379,14 @@
                           }
                           // Update self-pulse timestamp with server time for accuracy
                           window.SP.Pulse._selfPulseTs = response.data && response.data.timestamp ? response.data.timestamp : Date.now();
-                          setTimeout(() => { window.SP.Pulse._selfPulseTs = null; window.SP.Pulse._selfPulseMsgId = null; }, 8000);
+                          
+                          // Clear any existing timeout so multiple clicks don't steal each other's clear signal
+                          if (window.SP.Pulse._selfPulseClearTimer) clearTimeout(window.SP.Pulse._selfPulseClearTimer);
+                          window.SP.Pulse._selfPulseClearTimer = setTimeout(() => {
+                              window.SP.Pulse._selfPulseTs = null;
+                              window.SP.Pulse._selfPulseMsgId = null;
+                              window.SP.Pulse._selfPulseClearTimer = null;
+                          }, 20000);
 
                           const statsRow = document.querySelector(`.sp-pulse-info-row[data-msg-id="${msgId}"]`);
                           if(statsRow) {
