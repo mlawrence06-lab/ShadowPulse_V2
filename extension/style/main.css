@@ -567,9 +567,8 @@ html[data-sp-theme="custom"] select {
 
 /* +Pulse Click Color Flash */
 @keyframes spPulseClickAnim {
-  0% { color: var(--sp-forum-pulse-click); text-shadow: 0 0 0 transparent; }
-  30% { color: var(--sp-forum-pulse-click); text-shadow: 0 0 12px var(--sp-forum-pulse-click); transform: scale(1.1); }
-  60% { color: var(--sp-forum-pulse-click); text-shadow: 0 0 8px var(--sp-forum-pulse-click); transform: scale(1.05); }
+  0% { color: var(--sp-forum-pulse-click); text-shadow: 0 0 0 transparent; transform: scale(1); }
+  50% { color: var(--sp-forum-pulse-click); text-shadow: 0 0 12px var(--sp-forum-pulse-click); transform: scale(1.1); }
   100% { color: #1e90ff; text-shadow: none; transform: scale(1); }
 }
 .sp-pulse-btn.sp-pulse-clicked {

@@ -26,6 +26,7 @@
                     type: 'GET_FAUCET_STATUS',
                     payload: { public_id: res.sp_public_id, uuid: res.sp_uuid }
                 }, result => {
+                    if (chrome.runtime.lastError) { done(); return; }
                     if (!result || !result.success || !result.data) {
                         isFaucetActiveLocal = false;
                         done();
@@ -100,13 +101,31 @@
                 
                 if (!res.sp_public_id || !res.sp_uuid) {
                     window.SP.Log.error("Cannot claim: missing identity");
-                    alert("Error: Identity not found. Please refresh the page.");
+                    console.error("ShadowPulse: Cannot claim: missing identity");
                     return;
                 }
-                const baseUrl = window.SP.Config.API_BASE_URL.replace('/api', '');
-                const claimUrl = `${baseUrl}/claim.php?voter_id=${encodeURIComponent(res.sp_public_id)}&uuid=${encodeURIComponent(res.sp_uuid)}`;
-                window.open(claimUrl, '_blank');
-                this.reset();
+
+                chrome.runtime.sendMessage({
+                    type: "CREATE_CLAIM_TOKEN",
+                    payload: {
+                        voter_id: res.sp_public_id,
+                        uuid: res.sp_uuid
+                    }
+                }, resp => {
+                    if (chrome.runtime.lastError) return;
+                    if (resp && resp.success && resp.data && resp.data.status === 'success' && resp.data.token) {
+                        const baseUrl = window.SP.Config.API_BASE_URL.replace('/api', '');
+                        const claimUrl = `${baseUrl}/claim.php?token=${encodeURIComponent(resp.data.token)}`;
+                        chrome.runtime.sendMessage({
+                            type: "OPEN_TAB",
+                            payload: { url: claimUrl }
+                        });
+                        this.reset();
+                    } else {
+                        window.SP.Log.error("Failed to create claim token");
+                        console.error("ShadowPulse: Failed to initiate claim");
+                    }
+                });
             });
         }
     };

@@ -5,7 +5,7 @@
         if (cachedTheme) {
             document.documentElement.setAttribute('data-sp-theme', cachedTheme);
             // Set emergency background immediately to prevent FOUC before CSS loads
-            if (cachedTheme === 'dark' || cachedTheme === 'custom') {
+            if (cachedTheme === 'dark') {
                 document.documentElement.style.backgroundColor = '#0f172a';
                 document.documentElement.style.color = '#f1f5f9';
             }

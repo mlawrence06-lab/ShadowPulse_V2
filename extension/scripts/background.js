@@ -5,10 +5,10 @@ import { CONFIG } from './config.js';
 
 // Global Error Handlers (Service Worker)
 self.addEventListener('error', (event) => {
-    console.error('[ShadowPulse Service Worker Fatal Error]', event.error || event.message);
+    if (CONFIG.DEBUG) console.error('[ShadowPulse Service Worker Fatal Error]', event.error || event.message);
 });
 self.addEventListener('unhandledrejection', (event) => {
-    console.error('[ShadowPulse Service Worker Unhandled Promise Rejection]', event.reason);
+    if (CONFIG.DEBUG) console.error('[ShadowPulse Service Worker Unhandled Promise Rejection]', event.reason);
 });
 
 // --- CONFIGURATION ---
@@ -55,17 +55,6 @@ async function fetchWithRetry(url, options = {}, retries = RETRY_OPTS.retries) {
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     try {
-        if (request.type === "FETCH_STATS") {
-            fetchWithRetry(CONFIG.STATS_URL + '?t=' + Date.now())
-                .then(response => {
-                    if (!response.ok) throw new Error("Network response was not ok");
-                    return response.json();
-                })
-                .then(data => sendResponse({ success: true, data: data }))
-                .catch(error => sendResponse({ success: false, error: error.message }));
-            return true;
-        }
-
         if (request.type === "SEND_PULSE") {
             const params = new URLSearchParams();
             const payload = request.payload || {};
@@ -159,6 +148,64 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             return true;
         }
 
+        if (request.type === "REGISTER_IDENTITY") {
+            const { public_id, uuid, btc_address } = request.payload || {};
+            const params = new URLSearchParams();
+            params.append('public_id', public_id || '');
+            params.append('uuid', uuid || '');
+            params.append('btc_address', btc_address || '');
+
+            fetchWithRetry(`${CONFIG.API_BASE_URL}/register_identity.php`, {
+                method: 'POST', body: params
+            })
+            .then(response => response.json())
+            .then(data => sendResponse({ success: true, data: data }))
+            .catch(error => sendResponse({ success: false, error: error.message }));
+            return true;
+        }
+
+        if (request.type === "CREATE_CLAIM_TOKEN") {
+            const { voter_id, uuid } = request.payload || {};
+            const params = new URLSearchParams();
+            params.append('voter_id', voter_id || '');
+            params.append('uuid', uuid || '');
+
+            fetchWithRetry(`${CONFIG.API_BASE_URL}/create_claim_token.php`, {
+                method: 'POST', body: params
+            })
+            .then(response => response.json())
+            .then(data => sendResponse({ success: true, data: data }))
+            .catch(error => sendResponse({ success: false, error: error.message }));
+            return true;
+        }
+
+        if (request.type === "CREATE_ACTIVITY_TOKEN") {
+            const { uuid } = request.payload || {};
+            const params = new URLSearchParams();
+            params.append('uuid', uuid || '');
+
+            fetchWithRetry(`${CONFIG.API_BASE_URL}/create_activity_token.php`, {
+                method: 'POST', body: params
+            })
+            .then(response => response.json())
+            .then(data => sendResponse({ success: true, data: data }))
+            .catch(error => sendResponse({ success: false, error: error.message }));
+            return true;
+        }
+
+        if (request.type === "OPEN_TAB") {
+            const { url } = request.payload || {};
+            if (url) {
+                chrome.tabs.create({ url: url }, () => {
+                    if (chrome.runtime.lastError) {
+                        // ignore tab creation errors
+                    }
+                });
+            }
+            sendResponse({ success: true });
+            return false;
+        }
+
         if (request.type === "SEND_DEBUG_LOG") {
             const { message, system_info } = request.payload || {};
             
@@ -174,7 +221,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
 
     } catch (criticalError) {
-        console.error("CRITICAL BACKGROUND ERROR", criticalError);
+        if (CONFIG.DEBUG) console.error("CRITICAL BACKGROUND ERROR", criticalError);
         sendResponse({ success: false, error: "Critical Extension Error: " + (criticalError.message || criticalError) });
     }
 });

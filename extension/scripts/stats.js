@@ -115,12 +115,32 @@
             const startY = h - ((history[0].p - minP) / rangeP * (h - 2)) - 1;
             grid += `<line x1="0" y1="${startY}" x2="${w}" y2="${startY}" stroke="${color}" stroke-opacity="0.6" stroke-width="1.5" />`;
 
-            graphEl.innerHTML = `
-                <svg viewBox="0 0 ${w} ${h}" fill="none" style="overflow:visible; width:100%; height:100%;">
-                    ${grid}
-                    <path d="${pathD}" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-            `;
+            const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+            svg.setAttribute("fill", "none");
+            svg.style.overflow = "visible";
+            svg.style.width = "100%";
+            svg.style.height = "100%";
+
+            // Append grid elements safely
+            if (grid) {
+                const tempSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                tempSvg.innerHTML = grid;
+                while (tempSvg.firstChild) {
+                    svg.appendChild(tempSvg.firstChild);
+                }
+            }
+
+            const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            path.setAttribute("d", pathD);
+            path.setAttribute("stroke", color);
+            path.setAttribute("stroke-width", "2");
+            path.setAttribute("stroke-linecap", "round");
+            path.setAttribute("stroke-linejoin", "round");
+            svg.appendChild(path);
+
+            graphEl.innerHTML = "";
+            graphEl.appendChild(svg);
         }
     };
 

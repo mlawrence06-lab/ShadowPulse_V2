@@ -27,16 +27,19 @@
     window.SP.Log = {
         
         info: function(...args) {
+            if (!window.SP.Config.DEBUG) return;
             const ts = new Date().toISOString();
             console.log("[ShadowPulse]", ts, ...args);
         },
         
         error: function(...args) {
+            if (!window.SP.Config.DEBUG) return;
             const ts = new Date().toISOString();
             console.error("[ShadowPulse]", ts, ...args);
         },
 
         warn: function(...args) {
+            if (!window.SP.Config.DEBUG) return;
             const ts = new Date().toISOString();
             console.warn("[ShadowPulse]", ts, ...args);
         },

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ShadowPulse",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "description": "BitcoinTalk Alternative Recognition Tool",
   "browser_specific_settings": {
     "gecko": {
@@ -12,7 +12,7 @@
       "strict_min_version": "113.0"
     }
   },
-  "permissions": ["storage"],
+  "permissions": ["storage", "clipboardWrite"],
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
@@ -43,6 +43,9 @@
       "run_at": "document_start"
     }
   ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  },
   "web_accessible_resources": [
     {
       "resources": ["style/main.css"],

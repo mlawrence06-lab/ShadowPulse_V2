@@ -29,6 +29,7 @@
     </svg>`;
 
     let currentLogoState = window.SP.LogoState.NORMAL;
+    let lastLogoState = window.SP.LogoState.NORMAL;
     let barHasMoved = false; // Track if bar was just dragged
 
     // Helper Functions within Module Scope
@@ -235,13 +236,24 @@
             });
             resetBtn.innerText = 'RESET';
             
+            let resetConfirm = false;
             resetBtn.onclick = () => {
-                if(confirm(`Reset ${currentMode.toUpperCase()} theme to defaults?`)) {
-                    chrome.storage.local.remove([storageKey], () => {
-                        window.SP.UI.applyThemeLogic(currentMode);
-                        closeEditor();
-                    });
+                if(!resetConfirm) {
+                    resetConfirm = true;
+                    resetBtn.innerText = 'CLICK AGAIN';
+                    resetBtn.style.color = '#ef4444';
+                    setTimeout(() => {
+                        resetConfirm = false;
+                        resetBtn.innerText = 'RESET';
+                        resetBtn.style.color = '';
+                    }, 3000);
+                    return;
                 }
+                resetConfirm = false;
+                chrome.storage.local.remove([storageKey], () => {
+                    window.SP.UI.applyThemeLogic(currentMode);
+                    closeEditor();
+                });
             };
             
             footer.append(saveBtn, resetBtn);
@@ -368,6 +380,11 @@
                 container.innerHTML = isGold ? BTC_LOGO_SVG : SP_LOGO_SVG;
             }
 
+            // Save non-pulse state so PULSE_BLUE can revert correctly
+            if (targetState !== window.SP.LogoState.PULSE_BLUE) {
+                lastLogoState = targetState;
+            }
+
             // Update Logic
             currentLogoState = targetState;
 
@@ -385,11 +402,11 @@
                 void zone.offsetWidth;
                 zone.classList.add('sp-flash');
                 
-                // Auto-revert PULSE_BLUE to NORMAL after animation
+                // Auto-revert PULSE_BLUE to previous state after animation
                 setTimeout(() => {
                     zone.classList.remove('sp-flash');
                     if (currentLogoState === window.SP.LogoState.PULSE_BLUE) {
-                        currentLogoState = window.SP.LogoState.NORMAL;
+                        window.SP.UI.updateLogo(lastLogoState);
                     }
                 }, 1000);
             } else {
@@ -878,7 +895,7 @@
 
                         <div class="sp-settings-row" style="justify-content:center; gap:14px; margin-top:8px;">
                              <a href="${window.SP.Config.BASE_URL}/reports/" target="_blank" class="sp-link">Report Center</a>
-                             <a href="${window.SP.Config.BASE_URL}/reports/faucet_activity.php" id="sp-faucet-activity-link" target="_blank" class="sp-link">Faucet Activity</a>
+                             <a href="#" id="sp-faucet-activity-link" class="sp-link">Faucet Activity</a>
                         </div>
 
                         <hr class="sp-sep" />
@@ -1079,27 +1096,26 @@
                  if (addr === '') {
                      btcBtn.textContent = '...';
                      chrome.storage.local.get(['sp_uuid', 'sp_public_id'], res => {
-                         const params = new URLSearchParams();
-                         params.append('public_id', '');
-                         params.append('uuid', res.sp_uuid);
-                         params.append('btc_address', '');
-                         
-                         fetch(`${Config.API_BASE_URL}/register_identity.php`, {
-                             method: 'POST', body: params
-                         })
-                         .then(r => r.json())
-                         .then(d => {
-                             if(d.status === 'success') {
-                                 chrome.storage.local.remove(['sp_btc_address']);
-                                 btcBtn.textContent = '✓';
-                                 btcInp.value = '';
-                                 btcInp.placeholder = 'Not set';
-                             } else {
-                                 btcBtn.textContent = '✓';
-                             }
-                         })
-                         .catch(() => {
-                             btcBtn.textContent = '✓';
+                         chrome.runtime.sendMessage({
+                             type: "REGISTER_IDENTITY",
+                            payload: {
+                                public_id: res.sp_public_id || '',
+                                uuid: res.sp_uuid,
+                                btc_address: ''
+                            }
+                         }, resp => {
+                             if (chrome.runtime.lastError) {
+                                btcBtn.textContent = '✗';
+                                return;
+                            }
+                            if (resp && resp.success && resp.data && resp.data.status === 'success') {
+                                chrome.storage.local.remove(['sp_btc_address']);
+                                btcBtn.textContent = '✓';
+                                btcInp.value = '';
+                                btcInp.placeholder = 'Not set';
+                            } else {
+                                btcBtn.textContent = '✗';
+                            }
                          });
                      });
                      return;
@@ -1120,17 +1136,21 @@
                  
                  btcBtn.textContent = '...';
                  chrome.storage.local.get(['sp_uuid', 'sp_public_id'], res => {
-                     const params = new URLSearchParams();
-                     params.append('public_id', res.sp_public_id);
-                     params.append('uuid', res.sp_uuid);
-                     params.append('btc_address', addr);
-                     
-                     fetch(`${Config.API_BASE_URL}/register_identity.php`, {
-                         method: 'POST', body: params
-                     })
-                     .then(r => r.json())
-                     .then(d => {
-                         if(d.status === 'success') {
+                     chrome.runtime.sendMessage({
+                         type: "REGISTER_IDENTITY",
+                         payload: {
+                             public_id: res.sp_public_id,
+                             uuid: res.sp_uuid,
+                             btc_address: addr
+                         }
+                     }, resp => {
+                         if (chrome.runtime.lastError) {
+                             btcBtn.textContent = '✗';
+                             btcInp.classList.add('sp-flash-error');
+                             setTimeout(() => btcInp.classList.remove('sp-flash-error'), 1000);
+                             return;
+                         }
+                         if (resp && resp.success && resp.data && resp.data.status === 'success') {
                              chrome.storage.local.set({ sp_btc_address: addr });
                              btcBtn.textContent = '✓';
                          } else {
@@ -1138,9 +1158,6 @@
                              btcInp.classList.add('sp-flash-error');
                              setTimeout(() => btcInp.classList.remove('sp-flash-error'), 1000);
                          }
-                     })
-                     .catch(() => {
-                         btcBtn.textContent = '✗';
                      });
                  });
              });
@@ -1166,40 +1183,61 @@
                  nameBtn.disabled = !val;
              });
              
+             let _savingName = false;
              nameBtn.addEventListener('click', () => {
                  const val = nameInp.value.trim();
                  if(!val || val.length < 3 || val.length > 50) return;
+                 if(_savingName) return;
+                 _savingName = true;
                  nameBtn.textContent = '...';
                  
                  chrome.storage.local.get(['sp_uuid'], res => {
-                     const params = new URLSearchParams();
-                     params.append('public_id', val);
-                     params.append('uuid', res.sp_uuid);
-                     fetch(`${Config.API_BASE_URL}/register_identity.php`, {
-                         method: 'POST', body: params
-                     }).then(r => r.json()).then(d => {
-                         if(d.status === 'success') {
+                     chrome.runtime.sendMessage({
+                         type: "REGISTER_IDENTITY",
+                         payload: {
+                             public_id: val,
+                             uuid: res.sp_uuid,
+                             btc_address: ''
+                         }
+                     }, resp => {
+                         _savingName = false;
+                         if (chrome.runtime.lastError) {
+                             nameBtn.textContent = '✗';
+                             return;
+                         }
+                         if (resp && resp.success && resp.data && resp.data.status === 'success') {
                              chrome.storage.local.set({ custom_name: val, sp_public_id: val });
                              nameBtn.textContent = '✓';
                              nameInp.style.borderColor = '';
                          } else {
                              nameBtn.textContent = '✗';
-                             const errMsg = d.message || 'Unknown error';
-                             window.SP.Log.error('Name change failed:', errMsg);
-                             alert('Failed to change name: ' + errMsg);
+                             const errMsg = (resp && resp.data && resp.data.message) ? resp.data.message : 'Unknown error';
+                             if (window.SP.Config.DEBUG) window.SP.Log.error('Name change failed:', errMsg);
+                             console.error('ShadowPulse: Failed to change name:', errMsg);
                          }
-                     }).catch(err => {
-                         nameBtn.textContent = '✗';
-                         alert('Network error. Please try again.');
                      });
                  });
              });
 
-             // Wire Faucet Activity link with uuid
+             // Wire Faucet Activity link — uses single-use token instead of raw UUID
              chrome.storage.local.get(['sp_uuid'], res => {
                  const faLink = backdrop.querySelector('#sp-faucet-activity-link');
                  if (faLink && res.sp_uuid) {
-                     faLink.href = `${window.SP.Config.BASE_URL}/reports/faucet_activity.php?uuid=${encodeURIComponent(res.sp_uuid)}`;
+                     faLink.addEventListener('click', (e) => {
+                         e.preventDefault();
+                         chrome.runtime.sendMessage({
+                             type: "CREATE_ACTIVITY_TOKEN",
+                             payload: { uuid: res.sp_uuid }
+                         }, resp => {
+                             if (chrome.runtime.lastError) return;
+                             if (resp && resp.success && resp.data && resp.data.status === 'success' && resp.data.token) {
+                                 const url = `${window.SP.Config.BASE_URL}/reports/faucet_activity.php?token=${encodeURIComponent(resp.data.token)}`;
+                                 chrome.runtime.sendMessage({ type: "OPEN_TAB", payload: { url: url } });
+                             } else {
+                                 window.SP.Log.error("Failed to create activity token");
+                             }
+                         });
+                     });
                  }
              });
 
@@ -1210,6 +1248,7 @@
                          chrome.runtime.sendMessage({
                              type: "GET_USER_STATS", payload: { voter_id: res.sp_public_id }
                          }, resp => {
+                             if (chrome.runtime.lastError) return;
                              if(resp && resp.success && resp.data.data) {
                                  const d = resp.data.data;
                                  const viewEl = backdrop.querySelector('#sp-stat-views');
@@ -1227,7 +1266,7 @@
                                  
                                  if(upLink && d.available_upgrades > 0 && res.sp_uuid) {
                                      upLink.style.display = 'flex';
-                                     upLink.href = `${window.SP.Config.BASE_URL}/reports/upgrade.php?id=${res.sp_uuid}`;
+                                     upLink.href = `${window.SP.Config.BASE_URL}/reports/upgrade.php`;
                                  } else if (upLink) {
                                      upLink.style.display = 'none';
                                  }
@@ -1318,14 +1357,23 @@
                  codeDisp.textContent = res.sp_uuid || "N/A";
              });
              
+             let _restoring = false;
              resBtn.onclick = () => {
                  const code = resInp.value.trim();
                  if(!code) return;
+                 if(_restoring) return;
+                 _restoring = true;
                  resBtn.textContent = '...';
                  
                  // Get current local BTC Address to preserve it if server returns null
                  chrome.storage.local.get(['sp_btc_address', 'sp_theme'], localRes => {
                      chrome.runtime.sendMessage({ type: "RECOVER_IDENTITY", uuid: code }, resp => {
+                         _restoring = false;
+                         if (chrome.runtime.lastError) {
+                             resBtn.textContent = 'Fail';
+                             console.error("ShadowPulse: Restore Failed");
+                             return;
+                         }
                          if(resp && resp.success && resp.data.status === 'success') {
                              chrome.storage.local.set({
                                  sp_uuid: code,
@@ -1339,7 +1387,7 @@
                              });
                          } else {
                              resBtn.textContent = 'Fail';
-                             alert("Restore Failed");
+                             console.error("ShadowPulse: Restore Failed");
                          }
                      });
                  });
