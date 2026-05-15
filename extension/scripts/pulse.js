@@ -382,6 +382,11 @@
                               window.SP.Utils.setState('sp_public_id', response.data.voter_id);
                               pid = response.data.voter_id;
                           }
+
+                          // FIX: Pulse-triggered faucet. If this pulse triggered the window, check eligibility immediately.
+                          if (response.data && response.data.btc_active) {
+                              window.SP.Faucet.checkEligibility();
+                          }
                           
                           const statsRow = document.querySelector(`.sp-pulse-info-row[data-msg-id="${msgId}"]`);
                           if(statsRow) {
