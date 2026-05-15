@@ -6,10 +6,10 @@
 
   // Global Error Handlers
   window.addEventListener("error", (event) => {
-    console.error("[ShadowPulse Fatal Error]", event.error || event.message);
+    if (window.SP.Config.DEBUG) console.error("[ShadowPulse Fatal Error]", event.error || event.message);
   });
   window.addEventListener("unhandledrejection", (event) => {
-    console.error("[ShadowPulse Unhandled Promise Rejection]", event.reason);
+    if (window.SP.Config.DEBUG) console.error("[ShadowPulse Unhandled Promise Rejection]", event.reason);
   });
 
   // Wait for Body
@@ -23,7 +23,7 @@
       init();
     } else if (bodyCheckAttempts >= MAX_BODY_CHECK_ATTEMPTS) {
       clearInterval(waitForBody);
-      console.error("[ShadowPulse] Failed to initialize: document.body not found after 10 seconds");
+      if (window.SP.Config.DEBUG) console.error("[ShadowPulse] Failed to initialize: document.body not found after 10 seconds");
     }
   }, 50);
 
@@ -60,17 +60,21 @@
 
   
   async function ensureIdentity() {
-    const Utils = window.SP.Utils;
-    const pid = await Utils.getState("sp_public_id");
-    const uuid = await Utils.getState("sp_uuid");
+    try {
+      const Utils = window.SP.Utils;
+      const pid = await Utils.getState("sp_public_id");
+      const uuid = await Utils.getState("sp_uuid");
 
-    const updates = {};
-    if (!uuid) updates.sp_uuid = Utils.generateUUID();
-    if (!pid) updates.sp_public_id = Utils.generateRandomId();
+      const updates = {};
+      if (!uuid) updates.sp_uuid = Utils.generateUUID();
+      if (!pid) updates.sp_public_id = Utils.generateRandomId();
 
-    if (Object.keys(updates).length > 0) {
-      await Utils.setLocalState(updates);
-      window.SP.Log.info("Identity Generated:", updates);
+      if (Object.keys(updates).length > 0) {
+        await Utils.setLocalState(updates);
+        if (window.SP.Config.DEBUG) window.SP.Log.info("Identity Generated:", updates);
+      }
+    } catch (e) {
+      if (window.SP.Config.DEBUG) window.SP.Log.error("ensureIdentity failed:", e);
     }
   }
 
@@ -79,7 +83,6 @@
     const Config = window.SP.Config;
     let lastPulseTs = 0;
 
-    
     async function beat() {
       // Pause heartbeat if the tab is backgrounded to prevent resource exhaustion and mobile crash
       if (document.visibilityState === "hidden") return;
@@ -104,7 +107,7 @@
               );
             }
           } catch (err) {
-            console.error("[ShadowPulse Heartbeat Error - Stats]", err);
+            if (Config.DEBUG) console.error("[ShadowPulse Heartbeat Error - Stats]", err);
           }
 
           // B+C shared context: read pulse identity once so both sections can exclude the sender
@@ -126,19 +129,15 @@
               window.SP.Faucet.reset();
             }
           } catch (err) {
-            console.error("[ShadowPulse Heartbeat Error - Faucet]", err);
+            if (Config.DEBUG) console.error("[ShadowPulse Heartbeat Error - Faucet]", err);
           }
 
           // C. Check Pulse (PULSE_BLUE) (Isolated)
           try {
             if (lastPulseTs !== 0 && newPulseTs > lastPulseTs) {
               // New Pulse Detected!
-              // Suppress flash if this was our own pulse (within last 8s)
-              const selfPulseTs = window.SP.Pulse && window.SP.Pulse._selfPulseTs ? window.SP.Pulse._selfPulseTs : null;
-              const selfPulseMsgId = window.SP.Pulse && window.SP.Pulse._selfPulseMsgId ? window.SP.Pulse._selfPulseMsgId : null;
-              const isSelfPulse = (selfPulseMsgId && String(selfPulseMsgId) === String(data.msg_id)) ||
-                                  (selfPulseTs && Math.abs(newPulseTs - selfPulseTs) < 100);
-              if (!isSelfPulse && String(lastPulseBy) !== String(pid)) {
+              // Server is the source of truth: skip if we were the last pinger
+              if (String(lastPulseBy) !== String(pid)) {
                 window.SP.UI.updateLogo(window.SP.LogoState.PULSE_BLUE);
                 window.SP.Pulse.flashPulseButton(data.msg_id);
               }
@@ -147,13 +146,14 @@
             // Update State: use timestamp so same-post and older-post pulses are always detected
             if (newPulseTs > 0) lastPulseTs = newPulseTs;
           } catch (err) {
-            console.error("[ShadowPulse Heartbeat Error - Pulse]", err);
+            if (Config.DEBUG) console.error("[ShadowPulse Heartbeat Error - Pulse]", err);
           }
         }
       } catch (e) {
         // Ignore BG errors
-        if (Config.DEBUG)
+        if (Config.DEBUG) {
           console.warn("[ShadowPulse Heartbeat Warning - BG Fetch]", e);
+        }
       }
     }
 

@@ -22,56 +22,62 @@
                 if (res.sp_flash_logo === false) { done(); return; }
                 if (!res.sp_public_id || !res.sp_uuid) { done(); return; }
 
-                chrome.runtime.sendMessage({
-                    type: 'GET_FAUCET_STATUS',
-                    payload: { public_id: res.sp_public_id, uuid: res.sp_uuid }
-                }, result => {
-                    if (!result || !result.success || !result.data) {
-                        isFaucetActiveLocal = false;
-                        done();
-                        return;
-                    }
+                try {
+                    chrome.runtime.sendMessage({
+                        type: 'GET_FAUCET_STATUS',
+                        payload: { public_id: res.sp_public_id, uuid: res.sp_uuid }
+                    }, result => {
+                        if (chrome.runtime.lastError) { done(); return; }
+                        if (!result || !result.success || !result.data) {
+                            isFaucetActiveLocal = false;
+                            done();
+                            return;
+                        }
 
-                    const status = result.data;
+                        const status = result.data;
 
-                    // Defensive Checks
-                    if (status.can_claim === true || status.can_claim === 1 || status.can_claim === '1') {
-                        // TRIGGER GOLD
-                        isFaucetActiveLocal = true;
-                        window.SP.UI.updateLogo(window.SP.LogoState.FAUCET_GOLD);
+                        // Defensive Checks
+                        if (status.can_claim === true || status.can_claim === 1 || status.can_claim === '1') {
+                            // TRIGGER GOLD
+                            isFaucetActiveLocal = true;
+                            window.SP.UI.updateLogo(window.SP.LogoState.FAUCET_GOLD);
 
-                        // Start claim window timer
-                        if (faucetTimeoutTimer) clearTimeout(faucetTimeoutTimer);
-                        faucetTimeoutTimer = setTimeout(() => {
+                            // Start claim window timer
+                            if (faucetTimeoutTimer) clearTimeout(faucetTimeoutTimer);
+                            faucetTimeoutTimer = setTimeout(() => {
+                                faucetTimeoutTimer = null;
+                                if (isFaucetActiveLocal) {
+                                    window.SP.Faucet.reset();
+                                }
+                            }, FAUCET_WINDOW_MS);
+                        } else if (status.reason === 'wait_delay' && status.delay_remaining > 0) {
+                            // Anti-Cheat System Delay
+                            isFaucetActiveLocal = true;
+                            // Clear any stale claim timeout when entering wait_delay
+                            if (faucetTimeoutTimer) clearTimeout(faucetTimeoutTimer);
                             faucetTimeoutTimer = null;
-                            if (isFaucetActiveLocal) {
-                                window.SP.Faucet.reset();
-                            }
-                        }, FAUCET_WINDOW_MS);
-                    } else if (status.reason === 'wait_delay' && status.delay_remaining > 0) {
-                        // Anti-Cheat System Delay
-                        isFaucetActiveLocal = true;
-                        // Clear any stale claim timeout when entering wait_delay
-                        if (faucetTimeoutTimer) clearTimeout(faucetTimeoutTimer);
-                        faucetTimeoutTimer = null;
 
-                        if(faucetCheckTimer) clearTimeout(faucetCheckTimer);
+                            if(faucetCheckTimer) clearTimeout(faucetCheckTimer);
 
-                        const MAX_DELAY_SECONDS = 300; // 5 minutes max
-                        const cappedDelay = Math.min(status.delay_remaining, MAX_DELAY_SECONDS);
-                        faucetCheckTimer = setTimeout(() => {
-                            faucetCheckTimer = null;
-                            // Guard: if reset() was called while we were waiting, abort
-                            if (!isFaucetActiveLocal) return;
-                            // Re-validate with server before showing gold
-                            window.SP.Faucet.checkEligibility();
-                        }, cappedDelay * 1000);
-                    } else {
-                        isFaucetActiveLocal = false;
-                        window.SP.UI.updateLogo(window.SP.LogoState.NORMAL);
-                    }
+                            const MAX_DELAY_SECONDS = 300; // 5 minutes max
+                            const cappedDelay = Math.min(status.delay_remaining, MAX_DELAY_SECONDS);
+                            faucetCheckTimer = setTimeout(() => {
+                                faucetCheckTimer = null;
+                                // Guard: if reset() was called while we were waiting, abort
+                                if (!isFaucetActiveLocal) return;
+                                // Re-validate with server before showing gold
+                                window.SP.Faucet.checkEligibility();
+                            }, cappedDelay * 1000);
+                        } else {
+                            isFaucetActiveLocal = false;
+                            window.SP.UI.updateLogo(window.SP.LogoState.NORMAL);
+                        }
+                        done();
+                    });
+                } catch (e) {
+                    window.SP.Log.error('Faucet eligibility check failed:', e);
                     done();
-                });
+                }
             });
         },
 
@@ -100,13 +106,31 @@
                 
                 if (!res.sp_public_id || !res.sp_uuid) {
                     window.SP.Log.error("Cannot claim: missing identity");
-                    alert("Error: Identity not found. Please refresh the page.");
+                    console.error("ShadowPulse: Cannot claim: missing identity");
                     return;
                 }
-                const baseUrl = window.SP.Config.API_BASE_URL.replace('/api', '');
-                const claimUrl = `${baseUrl}/claim.php?voter_id=${encodeURIComponent(res.sp_public_id)}&uuid=${encodeURIComponent(res.sp_uuid)}`;
-                window.open(claimUrl, '_blank');
-                this.reset();
+
+                chrome.runtime.sendMessage({
+                    type: "CREATE_CLAIM_TOKEN",
+                    payload: {
+                        voter_id: res.sp_public_id,
+                        uuid: res.sp_uuid
+                    }
+                }, resp => {
+                    if (chrome.runtime.lastError) return;
+                    if (resp && resp.success && resp.data && resp.data.status === 'success' && resp.data.token) {
+                        const baseUrl = window.SP.Config.API_BASE_URL.replace('/api', '');
+                        const claimUrl = `${baseUrl}/claim.php?token=${encodeURIComponent(resp.data.token)}`;
+                        chrome.runtime.sendMessage({
+                            type: "OPEN_TAB",
+                            payload: { url: claimUrl }
+                        });
+                        this.reset();
+                    } else {
+                        window.SP.Log.error("Failed to create claim token");
+                        console.error("ShadowPulse: Failed to initiate claim");
+                    }
+                });
             });
         }
     };

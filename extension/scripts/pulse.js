@@ -341,12 +341,10 @@
 
              btnPulse.addEventListener("click", async (e) => {
                  e.preventDefault(); e.stopPropagation();
-                 btnPulse.classList.add("sp-flash", "sp-pulse-clicked");
-                 setTimeout(() => btnPulse.classList.remove("sp-flash", "sp-pulse-clicked"), 1000);
-                 
-                 // Set self-pulse flag IMMEDIATELY (before async) so heartbeat race is covered
-                 window.SP.Pulse._selfPulseTs = Date.now();
-                 window.SP.Pulse._selfPulseMsgId = msgId;
+                 // Guard against rapid double-clicks
+                 if (btnPulse.classList.contains("sp-pulse-clicked")) return;
+                 btnPulse.classList.add("sp-pulse-clicked");
+                 setTimeout(() => btnPulse.classList.remove("sp-pulse-clicked"), 1000);
                  
                  let pid = await window.SP.Utils.getState('sp_public_id');
                  const uuid = await window.SP.Utils.getState('sp_uuid');
@@ -370,6 +368,13 @@
                     type: "SEND_PULSE",
                     payload: payload,
                   }, response => {
+                      if (chrome.runtime.lastError) {
+                          btnPulse.classList.remove("sp-pulse-clicked");
+                          void btnPulse.offsetWidth;
+                          btnPulse.classList.add("sp-flash-error");
+                          setTimeout(() => btnPulse.classList.remove("sp-flash-error"), 1000);
+                          return;
+                      }
                       if (response && response.success) {
                           // Sync identity if server used a different public_id
                           if (response.data && response.data.voter_id && String(response.data.voter_id) !== String(pid)) {
@@ -377,17 +382,7 @@
                               window.SP.Utils.setState('sp_public_id', response.data.voter_id);
                               pid = response.data.voter_id;
                           }
-                          // Update self-pulse timestamp with server time for accuracy
-                          window.SP.Pulse._selfPulseTs = response.data && response.data.timestamp ? response.data.timestamp : Date.now();
                           
-                          // Clear any existing timeout so multiple clicks don't steal each other's clear signal
-                          if (window.SP.Pulse._selfPulseClearTimer) clearTimeout(window.SP.Pulse._selfPulseClearTimer);
-                          window.SP.Pulse._selfPulseClearTimer = setTimeout(() => {
-                              window.SP.Pulse._selfPulseTs = null;
-                              window.SP.Pulse._selfPulseMsgId = null;
-                              window.SP.Pulse._selfPulseClearTimer = null;
-                          }, 20000);
-
                           const statsRow = document.querySelector(`.sp-pulse-info-row[data-msg-id="${msgId}"]`);
                           if(statsRow) {
                                let text = statsRow.textContent;
@@ -405,10 +400,7 @@
                                statsRow.classList.add("smalltext");
                           }
                       } else {
-                          // Error Flash — clear self-pulse flag so we don't suppress real pulses
-                          window.SP.Pulse._selfPulseTs = null;
-                          window.SP.Pulse._selfPulseMsgId = null;
-                          btnPulse.classList.remove("sp-flash", "sp-pulse-clicked");
+                          btnPulse.classList.remove("sp-pulse-clicked");
                           void btnPulse.offsetWidth;
                           btnPulse.classList.add("sp-flash-error");
                           setTimeout(() => btnPulse.classList.remove("sp-flash-error"), 1000);
@@ -429,7 +421,8 @@
                     type: "GET_VOTE_STATUS",
                     payload: { msg_ids: uniqueIds.join(",") }
                 }, response => {
-                     if (response && response.success && response.data && response.data.data) {
+                    if (chrome.runtime.lastError) return;
+                    if (response && response.success && response.data && response.data.data) {
                         const dataMap = response.data.data;
                         Object.keys(dataMap).forEach((msgId) => {
                             const stats = dataMap[msgId];
@@ -461,12 +454,9 @@
         
         flashPulseButton: function(msgId) {
              const btn = document.querySelector(`.sp-pulse-btn[data-msg-id="${msgId}"]`);
-             if (btn) {
-                btn.classList.remove("sp-flash");
-                void btn.offsetWidth;
-                btn.classList.add("sp-flash");
-                setTimeout(() => btn.classList.remove("sp-flash"), 1000);
-             }
+             if (!btn) return;
+             btn.classList.add("sp-flash");
+             setTimeout(() => btn.classList.remove("sp-flash"), 1000);
         }
     };
 

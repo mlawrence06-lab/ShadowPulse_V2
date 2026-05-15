@@ -36,7 +36,6 @@ New-Item -ItemType Directory -Force -Path $StyleDir | Out-Null
 # Copy files
 Write-Host "[2/5] Copying content scripts..."
 $FilesToCopy = @(
-    "scripts/config.js",
     "scripts/utils.js",
     "scripts/ui.js",
     "scripts/faucet.js",
