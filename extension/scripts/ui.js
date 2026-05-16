@@ -734,7 +734,7 @@
                     chrome.storage.local.set({ sp_bar_pos: { left: bar.style.left, top: bar.style.top } });
                     barHasMoved = true; // Set module flag
                     // Reset after a short delay to allow click handler to check it
-                    setTimeout(() => { barHasMoved = false; }, 100);
+                    setTimeout(() => { barHasMoved = false; }, 350);
                 }
             };
             
@@ -770,10 +770,9 @@
                 bar.classList.add('dragging');
                 document.body.classList.add('sp-dragging');
                 
-                // Prevent browser scroll interference on mobile
-                if (e.type === 'touchstart') {
-                    e.preventDefault();
-                }
+                // NOTE: e.preventDefault() removed here — CSS touch-action: none already
+                // prevents browser scroll. Calling preventDefault() on touchstart blocks
+                // the synthetic click event on mobile, breaking logo taps.
                 
                 // Use capture phase to ensure we get events first
                 window.addEventListener('mousemove', onMove, true);
