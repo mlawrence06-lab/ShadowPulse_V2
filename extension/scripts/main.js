@@ -95,7 +95,7 @@
 
   async function startHeartbeat() {
     const Config = window.SP.Config;
-    let lastPulseTs = 0;
+    let lastPulseTs = -1;
     let isBeating = false;
 
     async function beat() {
@@ -167,14 +167,17 @@
 
         // C. Check Pulse
         try {
-          if (lastPulseTs !== 0 && newPulseTs > lastPulseTs) {
+          if (lastPulseTs >= 0 && newPulseTs > lastPulseTs) {
             if (String(lastPulseBy) !== String(pid)) {
-              Logger.info('[Heartbeat] New pulse detected from', lastPulseBy);
+              Logger.info('[Heartbeat] New pulse detected from', lastPulseBy, 'msg_id=', data.msg_id);
               window.SP.State.setLogoState(window.SP.State.Logo.PULSE_BLUE);
               window.SP.Pulse.flashPulseButton(data.msg_id);
+            } else {
+              Logger.info('[Heartbeat] Pulse from self ignored');
             }
           }
-          if (newPulseTs > 0) lastPulseTs = newPulseTs;
+          lastPulseTs = newPulseTs;
+          Logger.info('[Heartbeat] Pulse baseline updated:', lastPulseTs);
         } catch (err) {
           Logger.error('[Heartbeat] Pulse check error:', err);
         }
