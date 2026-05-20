@@ -2,133 +2,201 @@
     "use strict";
 
     window.SP = window.SP || {};
-    
-    let isFaucetActiveLocal = false;
-    let faucetCheckTimer = null;
-    let faucetTimeoutTimer = null;
-    const FAUCET_WINDOW_MS = 15000; // 15 seconds claim window
+
+    const FAUCET_WINDOW_MS = 60000;
+    const CHECK_TIMEOUT_MS = 10000;
 
     window.SP.Faucet = {
-        
-        
-        checkEligibility: function() {
-            // Prevent multiple concurrent eligibility checks
-            if (this._checkingEligibility) return;
-            this._checkingEligibility = true;
+        _checkTimer: null,
+        _windowTimer: null,
+        _safetyTimer: null,
+        _retryCount: 0,
+        MAX_RETRIES: 3,
 
-            const done = () => { this._checkingEligibility = false; };
-            
+        checkEligibility: function() {
+            const State = window.SP.State;
+            const Logger = window.SP.Logger;
+
+            if (State.getFaucetState() === State.Faucet.CHECKING) {
+                Logger.info('[Faucet] Already checking, skipping');
+                return;
+            }
+
+            State.setFaucetState(State.Faucet.CHECKING);
+            Logger.info('[Faucet] Starting eligibility check');
+
+            this._clearSafetyTimer();
+            this._safetyTimer = setTimeout(() => {
+                if (State.getFaucetState() === State.Faucet.CHECKING) {
+                    Logger.error('[Faucet] Eligibility check timed out after', CHECK_TIMEOUT_MS, 'ms');
+                    this._retryCount++;
+                    if (this._retryCount >= this.MAX_RETRIES) {
+                        Logger.error('[Faucet] Max retries exceeded, giving up');
+                        State.setFaucetState(State.Faucet.ERROR, { reason: 'max_retries' });
+                        this._retryCount = 0;
+                    } else {
+                        State.setFaucetState(State.Faucet.ERROR, { reason: 'timeout', retry: this._retryCount });
+                        this._scheduleRetry(5000);
+                    }
+                }
+            }, CHECK_TIMEOUT_MS);
+
             chrome.storage.local.get(['sp_public_id', 'sp_uuid', 'sp_flash_logo'], res => {
-                if (res.sp_flash_logo === false) { done(); return; }
-                if (!res.sp_public_id || !res.sp_uuid) { done(); return; }
+                this._clearSafetyTimer();
+
+                if (chrome.runtime.lastError) {
+                    Logger.error('[Faucet] Storage error:', chrome.runtime.lastError.message);
+                    State.setFaucetState(State.Faucet.ERROR, { reason: 'storage_error' });
+                    return;
+                }
 
                 try {
+                    if (!res) {
+                        Logger.error('[Faucet] Storage returned null');
+                        State.setFaucetState(State.Faucet.IDLE);
+                        return;
+                    }
+
+                    if (res.sp_flash_logo === false) {
+                        Logger.warn('[Faucet] Flash disabled by user');
+                        State.setFaucetState(State.Faucet.IDLE);
+                        return;
+                    }
+
+                    if (!res.sp_uuid) {
+                        Logger.warn('[Faucet] Missing UUID');
+                        State.setFaucetState(State.Faucet.IDLE);
+                        return;
+                    }
+
+                    Logger.info('[Faucet] Checking eligibility for UUID:', res.sp_uuid.slice(0, 8) + '...');
+
                     chrome.runtime.sendMessage({
                         type: 'GET_FAUCET_STATUS',
-                        payload: { public_id: res.sp_public_id, uuid: res.sp_uuid }
+                        payload: { public_id: res.sp_public_id || '', uuid: res.sp_uuid }
                     }, result => {
-                        if (chrome.runtime.lastError) { done(); return; }
-                        if (!result || !result.success || !result.data) {
-                            isFaucetActiveLocal = false;
-                            done();
-                            return;
-                        }
-
-                        const status = result.data;
-
-                        // Defensive Checks
-                        if (status.can_claim === true || status.can_claim === 1 || status.can_claim === '1') {
-                            // TRIGGER GOLD
-                            isFaucetActiveLocal = true;
-                            window.SP.UI.updateLogo(window.SP.LogoState.FAUCET_GOLD);
-
-                            // Start claim window timer
-                            if (faucetTimeoutTimer) clearTimeout(faucetTimeoutTimer);
-                            faucetTimeoutTimer = setTimeout(() => {
-                                faucetTimeoutTimer = null;
-                                if (isFaucetActiveLocal) {
-                                    window.SP.Faucet.reset();
-                                }
-                            }, FAUCET_WINDOW_MS);
-                        } else if (status.reason === 'wait_delay' && status.delay_remaining > 0) {
-                            // Anti-Cheat System Delay
-                            isFaucetActiveLocal = true;
-                            // Clear any stale claim timeout when entering wait_delay
-                            if (faucetTimeoutTimer) clearTimeout(faucetTimeoutTimer);
-                            faucetTimeoutTimer = null;
-
-                            if(faucetCheckTimer) clearTimeout(faucetCheckTimer);
-
-                            const MAX_DELAY_SECONDS = 300; // 5 minutes max
-                            const cappedDelay = Math.min(status.delay_remaining, MAX_DELAY_SECONDS);
-                            faucetCheckTimer = setTimeout(() => {
-                                faucetCheckTimer = null;
-                                // Guard: if reset() was called while we were waiting, abort
-                                if (!isFaucetActiveLocal) return;
-                                // Re-validate with server before showing gold
-                                window.SP.Faucet.checkEligibility();
-                            }, cappedDelay * 1000);
-                        } else {
-                            isFaucetActiveLocal = false;
-                            window.SP.UI.updateLogo(window.SP.LogoState.NORMAL);
-                        }
-                        done();
+                        this._handleStatusResponse(result);
                     });
                 } catch (e) {
-                    window.SP.Log.error('Faucet eligibility check failed:', e);
-                    done();
+                    Logger.error('[Faucet] Exception during check:', e);
+                    State.setFaucetState(State.Faucet.ERROR, { reason: 'exception', error: e.message });
                 }
             });
         },
 
-        
-        reset: function() {
-            isFaucetActiveLocal = false;
-            if(faucetCheckTimer) clearTimeout(faucetCheckTimer);
-            if(faucetTimeoutTimer) clearTimeout(faucetTimeoutTimer);
-            faucetCheckTimer = null;
-            faucetTimeoutTimer = null;
-            window.SP.UI.updateLogo(window.SP.LogoState.NORMAL);
-        },
+        _handleStatusResponse: function(result) {
+            const State = window.SP.State;
+            const Logger = window.SP.Logger;
 
-        
-        isActive: function() {
-            return isFaucetActiveLocal;
-        },
-
-        
-        claim: function() {
-            if (!isFaucetActiveLocal) {
-                window.SP.Log.warn("Claim called while faucet is not active");
+            if (chrome.runtime.lastError) {
+                Logger.error('[Faucet] Background error:', chrome.runtime.lastError.message);
+                State.setFaucetState(State.Faucet.ERROR, { reason: 'bg_error' });
                 return;
             }
+
+            if (!result || !result.success || !result.data) {
+                Logger.warn('[Faucet] Invalid BG response:', result);
+                State.setFaucetState(State.Faucet.IDLE);
+                return;
+            }
+
+            const status = result.data;
+            Logger.info('[Faucet] Server says can_claim=', status.can_claim, 'reason=', status.reason);
+
+            // Reset retry count on successful response
+            this._retryCount = 0;
+
+            if (status.can_claim === true || status.can_claim === 1 || status.can_claim === '1') {
+                State.setFaucetState(State.Faucet.ACTIVE, status);
+                this._startWindowTimer();
+            } else if (status.reason === 'wait_delay' && status.delay_remaining > 0) {
+                State.setFaucetState(State.Faucet.DELAYED, status);
+                const cappedDelay = Math.min(status.delay_remaining, 300);
+                this._scheduleRetry(cappedDelay * 1000);
+            } else if (status.reason === 'already_claimed') {
+                State.setFaucetState(State.Faucet.CLAIMED, status);
+            } else if (status.reason === 'window_closed') {
+                State.setFaucetState(State.Faucet.CLOSED, status);
+            } else if (status.reason === 'not_triggered') {
+                State.setFaucetState(State.Faucet.IDLE, status);
+            } else if (status.error) {
+                Logger.error('[Faucet] Server error:', status.error);
+                State.setFaucetState(State.Faucet.ERROR, status);
+            } else {
+                Logger.warn('[Faucet] Unexpected status:', status);
+                State.setFaucetState(State.Faucet.IDLE, status);
+            }
+        },
+
+        _startWindowTimer: function() {
+            this._clearWindowTimer();
+            this._windowTimer = setTimeout(() => {
+                window.SP.Logger.info('[Faucet] Window timer expired');
+                window.SP.State.setFaucetState(window.SP.State.Faucet.CLOSED, { reason: 'timer_expired' });
+            }, FAUCET_WINDOW_MS);
+        },
+
+        _scheduleRetry: function(ms) {
+            this._clearCheckTimer();
+            this._checkTimer = setTimeout(() => {
+                this.checkEligibility();
+            }, ms);
+        },
+
+        _clearSafetyTimer: function() {
+            if (this._safetyTimer) { clearTimeout(this._safetyTimer); this._safetyTimer = null; }
+        },
+        _clearWindowTimer: function() {
+            if (this._windowTimer) { clearTimeout(this._windowTimer); this._windowTimer = null; }
+        },
+        _clearCheckTimer: function() {
+            if (this._checkTimer) { clearTimeout(this._checkTimer); this._checkTimer = null; }
+        },
+
+        reset: function() {
+            const Logger = window.SP.Logger;
+            Logger.info('[Faucet] Resetting');
+            this._clearSafetyTimer();
+            this._clearWindowTimer();
+            this._clearCheckTimer();
+            this._retryCount = 0;
+            window.SP.State.reset();
+        },
+
+        claim: function() {
+            const State = window.SP.State;
+            const Logger = window.SP.Logger;
+            const current = State.getFaucetState();
+
+            if (current !== State.Faucet.ACTIVE && current !== State.Faucet.DELAYED) {
+                Logger.warn('[Faucet] Claim called but state is:', current);
+                return;
+            }
+
             chrome.storage.local.get(['sp_public_id', 'sp_uuid'], res => {
-                
-                if (!res.sp_public_id || !res.sp_uuid) {
-                    window.SP.Log.error("Cannot claim: missing identity");
-                    console.error("ShadowPulse: Cannot claim: missing identity");
+                if (chrome.runtime.lastError || !res || !res.sp_uuid) {
+                    Logger.error('[Faucet] Cannot claim: missing identity');
                     return;
                 }
 
+                Logger.info('[Faucet] Creating claim token...');
+
                 chrome.runtime.sendMessage({
-                    type: "CREATE_CLAIM_TOKEN",
-                    payload: {
-                        voter_id: res.sp_public_id,
-                        uuid: res.sp_uuid
-                    }
+                    type: 'CREATE_CLAIM_TOKEN',
+                    payload: { voter_id: res.sp_public_id || '', uuid: res.sp_uuid }
                 }, resp => {
-                    if (chrome.runtime.lastError) return;
+                    if (chrome.runtime.lastError) {
+                        Logger.error('[Faucet] Token creation error:', chrome.runtime.lastError.message);
+                        return;
+                    }
                     if (resp && resp.success && resp.data && resp.data.status === 'success' && resp.data.token) {
                         const baseUrl = window.SP.Config.API_BASE_URL.replace('/api', '');
                         const claimUrl = `${baseUrl}/claim.php?token=${encodeURIComponent(resp.data.token)}`;
-                        chrome.runtime.sendMessage({
-                            type: "OPEN_TAB",
-                            payload: { url: claimUrl }
-                        });
+                        Logger.info('[Faucet] Opening claim page');
+                        chrome.runtime.sendMessage({ type: 'OPEN_TAB', payload: { url: claimUrl } });
                         this.reset();
                     } else {
-                        window.SP.Log.error("Failed to create claim token");
-                        console.error("ShadowPulse: Failed to initiate claim");
+                        Logger.error('[Faucet] Failed to create claim token:', resp);
                     }
                 });
             });

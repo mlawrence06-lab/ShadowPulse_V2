@@ -122,12 +122,12 @@
             svg.style.width = "100%";
             svg.style.height = "100%";
 
-            // Append grid elements safely
+            // Append grid elements safely (no innerHTML)
             if (grid) {
-                const tempSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-                tempSvg.innerHTML = grid;
-                while (tempSvg.firstChild) {
-                    svg.appendChild(tempSvg.firstChild);
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(`<svg xmlns="http://www.w3.org/2000/svg">${grid}</svg>`, 'image/svg+xml');
+                while (doc.documentElement.firstChild) {
+                    svg.appendChild(doc.documentElement.firstChild);
                 }
             }
 
@@ -139,7 +139,7 @@
             path.setAttribute("stroke-linejoin", "round");
             svg.appendChild(path);
 
-            graphEl.innerHTML = "";
+            graphEl.textContent = "";
             graphEl.appendChild(svg);
         }
     };

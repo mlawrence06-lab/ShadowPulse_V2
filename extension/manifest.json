@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ShadowPulse",
-  "version": "2.5.2",
+  "version": "2.6.0",
   "description": "BitcoinTalk Alternative Recognition Tool",
   "permissions": ["storage", "clipboardWrite"],
   "icons": {
@@ -25,6 +25,7 @@
       "js": [
         "scripts/theme_boot.js",
         "scripts/utils.js",
+        "scripts/state.js",
         "scripts/ui.js",
         "scripts/faucet.js",
         "scripts/stats.js",

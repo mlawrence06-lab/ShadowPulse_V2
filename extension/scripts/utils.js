@@ -4,9 +4,6 @@
     window.SP = window.SP || {};
 
     // --- TERMINOLOGY ---
-    // Normal: SP Logo
-    // Pulse: Flash Blue
-    // Faucet: Flash Gold (Animated BTC)
     window.SP.LogoState = {
         NORMAL: 'normal',
         PULSE_BLUE: 'pulse_blue',
@@ -23,40 +20,30 @@
         WEBSITE_ID: 1
     };
 
-    // --- LOGGING ---
-    window.SP.Log = {
-        
-        info: function(...args) {
-            if (!window.SP.Config.DEBUG) return;
-            const ts = new Date().toISOString();
-            console.log("[ShadowPulse]", ts, ...args);
+    // --- ALWAYS-ON LOGGING (Production Grade) ---
+    // ERROR, WARN, and INFO are always visible in the console.
+    // DEBUG only appears when window.SP.Config.DEBUG is true.
+    window.SP.Logger = {
+        _prefix: function(level) {
+            const ts = new Date().toISOString().split('T')[1].split('.')[0];
+            return `[${ts} ShadowPulse ${level}]`;
         },
-        
+
         error: function(...args) {
-            if (!window.SP.Config.DEBUG) return;
-            const ts = new Date().toISOString();
-            console.error("[ShadowPulse]", ts, ...args);
+            console.error(this._prefix('ERROR'), ...args);
         },
 
         warn: function(...args) {
-            if (!window.SP.Config.DEBUG) return;
-            const ts = new Date().toISOString();
-            console.warn("[ShadowPulse]", ts, ...args);
+            console.warn(this._prefix('WARN'), ...args);
         },
-        
-        debug: function(isDebug, ...args) {
-            if (!isDebug) return;
-            const ts = new Date().toISOString();
-            const sysInfo = `[${navigator.platform} | ${navigator.userAgent} | ${window.location.href}]`;
-            console.log("[ShadowPulse DEBUG]", ts, sysInfo, ...args);
-            // Optional: Send to BG
-            try {
-                const message = args.map(a => (typeof a === 'object') ? JSON.stringify(a) : String(a)).join(" ");
-                chrome.runtime.sendMessage({
-                    type: "SEND_DEBUG_LOG",
-                    payload: { message: message, system_info: sysInfo }
-                }).catch(() => {});
-            } catch (e) {}
+
+        info: function(...args) {
+            console.log(this._prefix('INFO'), ...args);
+        },
+
+        debug: function(...args) {
+            if (!window.SP.Config.DEBUG) return;
+            console.log(this._prefix('DEBUG'), ...args);
         }
     };
 
@@ -78,17 +65,35 @@
         
         
         getState: async function(key, def) {
-            return new Promise((resolve) => {
-                chrome.storage.local.get([key], (res) => {
-                    resolve(res[key] !== undefined ? res[key] : def);
-                });
+            return new Promise((resolve, reject) => {
+                try {
+                    chrome.storage.local.get([key], (res) => {
+                        if (chrome.runtime.lastError) {
+                            reject(new Error(chrome.runtime.lastError.message));
+                            return;
+                        }
+                        resolve(res && res[key] !== undefined ? res[key] : def);
+                    });
+                } catch (e) {
+                    reject(e);
+                }
             });
         },
 
         
         setState: async function(key, val) {
-            return new Promise((resolve) => {
-                chrome.storage.local.set({ [key]: val }, resolve);
+            return new Promise((resolve, reject) => {
+                try {
+                    chrome.storage.local.set({ [key]: val }, () => {
+                        if (chrome.runtime.lastError) {
+                            reject(new Error(chrome.runtime.lastError.message));
+                            return;
+                        }
+                        resolve();
+                    });
+                } catch (e) {
+                    reject(e);
+                }
             });
         },
 
@@ -107,7 +112,6 @@
             if (typeof crypto !== 'undefined' && crypto.randomUUID) {
                 return crypto.randomUUID();
             }
-            // Fallback for extremely old environments, just in case
             return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
                 (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
             );
@@ -115,8 +119,18 @@
 
         
         setLocalState: function(updates) {
-             return new Promise((resolve) => {
-                 chrome.storage.local.set(updates, resolve);
+             return new Promise((resolve, reject) => {
+                 try {
+                     chrome.storage.local.set(updates, () => {
+                         if (chrome.runtime.lastError) {
+                             reject(new Error(chrome.runtime.lastError.message));
+                             return;
+                         }
+                         resolve();
+                     });
+                 } catch (e) {
+                     reject(e);
+                 }
              });
         }
     };

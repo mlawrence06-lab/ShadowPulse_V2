@@ -1,21 +1,19 @@
 (function () {
   "use strict";
 
-  // Main Entry Point
-  // Orchestrates loading
+  const Logger = window.SP.Logger;
 
   // Global Error Handlers
   window.addEventListener("error", (event) => {
-    if (window.SP.Config.DEBUG) console.error("[ShadowPulse Fatal Error]", event.error || event.message);
+    Logger.error('Fatal Error:', event.error || event.message);
   });
   window.addEventListener("unhandledrejection", (event) => {
-    if (window.SP.Config.DEBUG) console.error("[ShadowPulse Unhandled Promise Rejection]", event.reason);
+    Logger.error('Unhandled Promise Rejection:', event.reason);
   });
 
   // Wait for Body
-  
   let bodyCheckAttempts = 0;
-  const MAX_BODY_CHECK_ATTEMPTS = 200; // 10 seconds max (200 * 50ms)
+  const MAX_BODY_CHECK_ATTEMPTS = 200;
   const waitForBody = setInterval(() => {
     bodyCheckAttempts++;
     if (document.body) {
@@ -23,22 +21,20 @@
       init();
     } else if (bodyCheckAttempts >= MAX_BODY_CHECK_ATTEMPTS) {
       clearInterval(waitForBody);
-      if (window.SP.Config.DEBUG) console.error("[ShadowPulse] Failed to initialize: document.body not found after 10 seconds");
+      Logger.error('Failed to initialize: document.body not found after 10 seconds');
     }
   }, 50);
 
-  
   function init() {
     // Clean up any stale extension UI from previous loads or older versions
     document.getElementById('sp-search-table')?.remove();
     document.getElementById('sp-floating-bar-root')?.remove();
     document.getElementById('sp-settings-root')?.remove();
 
-    window.SP.Log.info(
-      "ShadowPulse v" +
-        chrome.runtime.getManifest().version +
-        " Initializing...",
-    );
+    Logger.info('ShadowPulse v' + chrome.runtime.getManifest().version + ' Initializing...');
+
+    // Set up state subscriptions before anything else runs
+    setupStateSubscriptions();
 
     // 1. Inject UI
     window.SP.UI.injectFloatingBar();
@@ -51,109 +47,141 @@
     // 2. Init Pulse (Buttons on Page)
     window.SP.Pulse.init();
 
-    // 2b. Ensure Identity (Fix for Fresh Installs/Android)
+    // 3. Ensure Identity, then start Heartbeat
     ensureIdentity().then(() => {
-      // 3. Start Heartbeat
       startHeartbeat();
     });
   }
 
-  
+  function setupStateSubscriptions() {
+    const State = window.SP.State;
+
+    // Log all state transitions for debugging
+    State.on('faucet:changed', (evt) => {
+      const metaStr = evt.meta && Object.keys(evt.meta).length ? '| meta=' + JSON.stringify(evt.meta) : '';
+      Logger.info('[State] Faucet:', evt.from, '→', evt.to, metaStr);
+    });
+
+    State.on('logo:changed', (evt) => {
+      Logger.info('[State] Logo:', evt.from, '→', evt.to);
+    });
+  }
+
   async function ensureIdentity() {
+    const Utils = window.SP.Utils;
+    let pid, uuid;
     try {
-      const Utils = window.SP.Utils;
-      const pid = await Utils.getState("sp_public_id");
-      const uuid = await Utils.getState("sp_uuid");
-
-      const updates = {};
-      if (!uuid) updates.sp_uuid = Utils.generateUUID();
-      if (!pid) updates.sp_public_id = Utils.generateRandomId();
-
-      if (Object.keys(updates).length > 0) {
-        await Utils.setLocalState(updates);
-        if (window.SP.Config.DEBUG) window.SP.Log.info("Identity Generated:", updates);
-      }
+      pid = await Utils.getState("sp_public_id");
     } catch (e) {
-      if (window.SP.Config.DEBUG) window.SP.Log.error("ensureIdentity failed:", e);
+      Logger.error('ensureIdentity: failed to read public_id:', e);
+    }
+    try {
+      uuid = await Utils.getState("sp_uuid");
+    } catch (e) {
+      Logger.error('ensureIdentity: failed to read uuid:', e);
+    }
+    const updates = {};
+    if (!uuid) updates.sp_uuid = Utils.generateUUID();
+    if (!pid) updates.sp_public_id = Utils.generateRandomId();
+    if (Object.keys(updates).length > 0) {
+      try {
+        await Utils.setLocalState(updates);
+        Logger.info('Identity generated:', Object.keys(updates));
+      } catch (e) {
+        Logger.error('ensureIdentity: failed to save identity:', e);
+      }
     }
   }
 
-  
   async function startHeartbeat() {
     const Config = window.SP.Config;
     let lastPulseTs = 0;
+    let isBeating = false;
 
     async function beat() {
-      // Pause heartbeat if the tab is backgrounded to prevent resource exhaustion and mobile crash
+      if (isBeating) {
+        Logger.warn('[Heartbeat] Skipping: previous beat still running');
+        return;
+      }
       if (document.visibilityState === "hidden") return;
 
-      // Get User ID
-      const pid = await window.SP.Utils.getState("sp_public_id");
-
+      isBeating = true;
       try {
+        let pid;
+        try {
+          pid = await window.SP.Utils.getState("sp_public_id");
+        } catch (e) {
+          Logger.error('[Heartbeat] Failed to read identity:', e.message);
+          return;
+        }
+
         const res = await chrome.runtime.sendMessage({
           type: "GET_LATEST_PULSE",
           voter_id: pid,
         });
 
-        if (res && res.data) {
-          const data = res.data;
+        if (!res || !res.data) {
+          Logger.warn('[Heartbeat] Background returned no data. Response:', res);
+          return;
+        }
 
-          // A. Dispatch Stats (Isolated)
-          try {
-            if (data.price_stats) {
-              document.dispatchEvent(
-                new CustomEvent("sp-heartbeat", { detail: data.price_stats }),
-              );
-            }
-          } catch (err) {
-            if (Config.DEBUG) console.error("[ShadowPulse Heartbeat Error - Stats]", err);
+        const data = res.data;
+
+        // A. Dispatch Stats
+        try {
+          if (data.price_stats) {
+            document.dispatchEvent(
+              new CustomEvent("sp-heartbeat", { detail: data.price_stats }),
+            );
           }
+        } catch (err) {
+          Logger.error('[Heartbeat] Stats dispatch error:', err);
+        }
 
-          // B+C shared context: read pulse identity once so both sections can exclude the sender
-          const newPulseTs = parseFloat(data.last_pulse) || 0;
-          const lastPulseBy = data.last_pulse_by;
+        const newPulseTs = parseFloat(data.last_pulse) || 0;
+        const lastPulseBy = data.last_pulse_by;
 
-          // B. Check Faucet (FAUCET_GOLD) (Isolated)
-          try {
-            // Defensive Type Check for 'btc_active'
-            const val = data.btc_active;
-            const isBtc = val === 1 || val === "1" || val === true;
+        // B. Check Faucet
+        try {
+          const val = data.btc_active;
+          const isBtc = val === 1 || val === "1" || val === true;
+          const faucetState = window.SP.State.getFaucetState();
 
-            if (isBtc) {
-              // Faucet is time-based; all eligible users see it
-              if (!window.SP.Faucet.isActive()) {
-                window.SP.Faucet.checkEligibility();
-              }
-            } else {
+          if (isBtc) {
+            Logger.info('[Heartbeat] btc_active=true');
+            if (faucetState === window.SP.State.Faucet.IDLE || 
+                faucetState === window.SP.State.Faucet.CLOSED ||
+                faucetState === window.SP.State.Faucet.CLAIMED ||
+                faucetState === window.SP.State.Faucet.ERROR) {
+              window.SP.Faucet.checkEligibility();
+            }
+          } else {
+            if (faucetState !== window.SP.State.Faucet.IDLE) {
+              Logger.info('[Heartbeat] btc_active=false, resetting faucet');
               window.SP.Faucet.reset();
             }
-          } catch (err) {
-            if (Config.DEBUG) console.error("[ShadowPulse Heartbeat Error - Faucet]", err);
           }
+        } catch (err) {
+          Logger.error('[Heartbeat] Faucet check error:', err);
+        }
 
-          // C. Check Pulse (PULSE_BLUE) (Isolated)
-          try {
-            if (lastPulseTs !== 0 && newPulseTs > lastPulseTs) {
-              // New Pulse Detected!
-              // Server is the source of truth: skip if we were the last pinger
-              if (String(lastPulseBy) !== String(pid)) {
-                window.SP.UI.updateLogo(window.SP.LogoState.PULSE_BLUE);
-                window.SP.Pulse.flashPulseButton(data.msg_id);
-              }
+        // C. Check Pulse
+        try {
+          if (lastPulseTs !== 0 && newPulseTs > lastPulseTs) {
+            if (String(lastPulseBy) !== String(pid)) {
+              Logger.info('[Heartbeat] New pulse detected from', lastPulseBy);
+              window.SP.State.setLogoState(window.SP.State.Logo.PULSE_BLUE);
+              window.SP.Pulse.flashPulseButton(data.msg_id);
             }
-
-            // Update State: use timestamp so same-post and older-post pulses are always detected
-            if (newPulseTs > 0) lastPulseTs = newPulseTs;
-          } catch (err) {
-            if (Config.DEBUG) console.error("[ShadowPulse Heartbeat Error - Pulse]", err);
           }
+          if (newPulseTs > 0) lastPulseTs = newPulseTs;
+        } catch (err) {
+          Logger.error('[Heartbeat] Pulse check error:', err);
         }
       } catch (e) {
-        // Ignore BG errors
-        if (Config.DEBUG) {
-          console.warn("[ShadowPulse Heartbeat Warning - BG Fetch]", e);
-        }
+        Logger.error('[Heartbeat] Background fetch failed:', e.message || e);
+      } finally {
+        isBeating = false;
       }
     }
 
@@ -174,7 +202,6 @@
 
     startHeartbeatLoop();
     
-    // Pause or Resume polling immediately when the user leaves or returns to the tab
     document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "visible") {
             startHeartbeatLoop();

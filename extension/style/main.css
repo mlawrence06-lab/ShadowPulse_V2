@@ -438,13 +438,14 @@ html[data-sp-theme="custom"] select {
   width: 48px; /* Standardize size to match SVG */
   height: 48px;
   border-radius: 50%;
-  /* background: radial-gradient(circle, var(--sp-accent-soft), transparent 70%); REMOVED: SVG handles bg */
+  /* Fallback: solid blue circle if SVG fails to render */
+  background: linear-gradient(135deg, #3b82f6, #1e40af);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   position: relative;
-  /* border: 1px solid var(--sp-border); REMOVED: SVG handles stroke if needed */
+  overflow: hidden;
 }
 /* Replaced by SVG internal text
 .sp-logo-text {
@@ -546,23 +547,47 @@ html[data-sp-theme="custom"] select {
   text-decoration: underline;
 }
 
-/* Flash Animation (Updated for SVG) */
-@keyframes spFlashAnim {
-  0% {
-    transform: scale(1);
-    filter: none;
-  }
-  50% {
-    transform: scale(1.15);
-    filter: drop-shadow(0 0 10px #ff00ff) hue-rotate(280deg);
-  }
-  100% {
-    transform: scale(1);
-    filter: none;
-  }
+/* --- LOGO ANIMATIONS (Match Admin Visual Test) --- */
+
+/* Blue Pulse Flash — when someone else pulses */
+@keyframes spBluePulseAnim {
+  0% { transform: scale(1); filter: none; }
+  30% { transform: scale(1.15); filter: drop-shadow(0 0 12px #3b82f6); }
+  100% { transform: scale(1); filter: none; }
 }
-.sp-flash {
-  animation: spFlashAnim 0.6s ease-out;
+.sp-flash-blue {
+  animation: spBluePulseAnim 0.6s ease-out;
+}
+
+/* Gold Flash — faucet activation entry */
+@keyframes spGoldFlashAnim {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 0 transparent); }
+  50% { transform: scale(1.12); filter: drop-shadow(0 0 16px #f7931a) drop-shadow(0 0 8px #fbbf24); }
+}
+.sp-flash-gold {
+  animation: spGoldFlashAnim 0.6s ease-out;
+}
+
+/* Continuous Gold Pulse — while faucet is active */
+@keyframes spGoldPulseLoop {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 8px rgba(247, 147, 26, 0.6)); }
+  50% { transform: scale(1.08); filter: drop-shadow(0 0 20px rgba(247, 147, 26, 0.9)) drop-shadow(0 0 10px #fbbf24); }
+}
+.sp-faucet-active {
+  animation: spGoldPulseLoop 2s ease-in-out infinite;
+}
+
+/* Shake — container attention grabber */
+@keyframes spShake {
+  0% { transform: rotate(0); }
+  20% { transform: rotate(-15deg); }
+  40% { transform: rotate(15deg); }
+  60% { transform: rotate(-10deg); }
+  80% { transform: rotate(5deg); }
+  100% { transform: rotate(0); }
+}
+.sp-shake {
+  animation: spShake 0.5s ease-in-out;
 }
 
 /* +Pulse Click Color Flash */
@@ -578,52 +603,22 @@ html[data-sp-theme="custom"] select {
 
 /* Error Flash (Red Shake) */
 @keyframes spFlashErrorAnim {
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-  25% {
-    transform: translateX(-3px);
-  }
-  75% {
-    transform: translateX(3px);
-  }
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
 }
 .sp-flash-error {
-  color: #ef4444 !important; /* Force Red override */
-  animation: spFlashErrorAnim 0.25s ease-in-out 4; /* 4 shakes = 1s */
+  color: #ef4444 !important;
+  animation: spFlashErrorAnim 0.25s ease-in-out 4;
 }
 
-
-@keyframes spFlash10s {
-  0%,
-  90% {
-    color: var(--sp-text-soft);
-    transform: scale(1);
-    opacity: 1;
-  }
-  92% {
-    color: #ff00ff;
-    text-shadow: 0 0 5px #ff00ff;
-    transform: scale(1.1);
-  }
-  94% {
-    color: var(--sp-text-soft);
-    transform: scale(1);
-  }
-  96% {
-    color: #ff00ff;
-    text-shadow: 0 0 5px #ff00ff;
-    transform: scale(1.1);
-  }
-  100% {
-    color: var(--sp-text-soft);
-    transform: scale(1);
-    opacity: 1;
-  }
+/* SHOW Button Slow Flash — when restore code not saved */
+@keyframes spShowFlash {
+  0%, 100% { border-color: var(--sp-border); color: var(--sp-text-soft); }
+  50% { border-color: #ef4444; color: #ef4444; box-shadow: 0 0 8px rgba(239, 68, 68, 0.4); }
 }
-.sp-flash-10s {
-  animation: spFlash10s 10s infinite;
+.sp-show-flash {
+  animation: spShowFlash 2s ease-in-out infinite;
 }
 
 .sp-pulse-container {

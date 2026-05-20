@@ -5,7 +5,7 @@
 
     // --- CONSTANTS ---
     const SP_LOGO_SVG = `
-    <svg viewBox="0 0 100 100" class="sp-std-logo">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="sp-std-logo">
         <defs>
             <linearGradient id="sp_logo_grad_float" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
@@ -17,16 +17,34 @@
     </svg>`;
 
     const BTC_LOGO_SVG = `
-    <svg viewBox="0 0 100 100" class="sp-std-logo">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="sp-std-logo">
         <defs>
             <linearGradient id="sp_logo_grad_btc" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
-                <stop offset="100%" style="stop-color:#1e40af;stop-opacity:1" />
+                <stop offset="0%" style="stop-color:#fbbf24;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#d97706;stop-opacity:1" />
             </linearGradient>
         </defs>
         <circle cx="50" cy="50" r="48" fill="url(#sp_logo_grad_btc)" />
-        <text x="50" y="70" font-family="sans-serif" font-weight="bold" font-size="56" text-anchor="middle" fill="#f7931a" style="pointer-events:none;">₿</text>
+        <text x="50" y="70" font-family="sans-serif" font-weight="bold" font-size="56" text-anchor="middle" fill="#78350f" style="pointer-events:none;">₿</text>
     </svg>`;
+
+    // Helper: safely inject static SVG string without innerHTML
+    // Uses importNode to preserve SVG namespace when moving between documents
+    function injectSvg(element, svgString) {
+        element.textContent = '';
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(svgString, 'image/svg+xml');
+        const parserError = doc.querySelector('parsererror');
+        if (parserError) {
+            window.SP.Logger.error('[UI] SVG parse error:', parserError.textContent);
+            return;
+        }
+        const svg = doc.querySelector('svg');
+        if (svg) {
+            const imported = document.importNode(svg, true);
+            element.appendChild(imported);
+        }
+    }
 
     let currentLogoState = window.SP.LogoState.NORMAL;
     let lastLogoState = window.SP.LogoState.NORMAL;
@@ -376,8 +394,8 @@
             // Check if we need to swap SVG
             const wasGold = currentLogoState === window.SP.LogoState.FAUCET_GOLD;
             
-            if (isGold !== wasGold || container.innerHTML.trim() === '') {
-                container.innerHTML = isGold ? BTC_LOGO_SVG : SP_LOGO_SVG;
+            if (isGold !== wasGold || container.children.length === 0) {
+                injectSvg(container, isGold ? BTC_LOGO_SVG : SP_LOGO_SVG);
             }
 
             // Save non-pulse state so PULSE_BLUE can revert correctly
@@ -392,28 +410,40 @@
             if (targetState === window.SP.LogoState.FAUCET_GOLD) {
                 zone.title = "Click to CLAIM BTC!";
                 zone.style.cursor = "pointer";
-                zone.classList.remove('sp-flash');
+                zone.classList.remove('sp-flash-blue', 'sp-faucet-active');
                 void zone.offsetWidth;
-                zone.classList.add('sp-flash');
+                zone.classList.add('sp-flash-gold');
+                // After entry flash, switch to continuous pulse
+                setTimeout(() => {
+                    zone.classList.remove('sp-flash-gold');
+                    if (currentLogoState === window.SP.LogoState.FAUCET_GOLD) {
+                        zone.classList.add('sp-faucet-active');
+                    }
+                }, 600);
+                // Shake the container for attention
+                container.classList.remove('sp-shake');
+                void container.offsetWidth;
+                container.classList.add('sp-shake');
+                setTimeout(() => container.classList.remove('sp-shake'), 500);
             } else if (targetState === window.SP.LogoState.PULSE_BLUE) {
                 zone.title = "Open Settings";
                 zone.style.cursor = "pointer";
-                zone.classList.remove('sp-flash');
+                zone.classList.remove('sp-flash-gold', 'sp-faucet-active');
                 void zone.offsetWidth;
-                zone.classList.add('sp-flash');
+                zone.classList.add('sp-flash-blue');
                 
                 // Auto-revert PULSE_BLUE to previous state after animation
                 setTimeout(() => {
-                    zone.classList.remove('sp-flash');
+                    zone.classList.remove('sp-flash-blue');
                     if (currentLogoState === window.SP.LogoState.PULSE_BLUE) {
                         window.SP.UI.updateLogo(lastLogoState);
                     }
-                }, 1000);
+                }, 600);
             } else {
                 // NORMAL
                 zone.title = "Open Settings";
                 zone.style.cursor = "pointer";
-                zone.classList.remove('sp-flash');
+                zone.classList.remove('sp-flash-blue', 'sp-flash-gold', 'sp-faucet-active');
             }
         },
 
@@ -440,7 +470,7 @@
             
             const logoCircle = Utils.createEl('div', ['sp-logo-circle']);
             logoCircle.id = 'sp-logo-container';
-            logoCircle.innerHTML = SP_LOGO_SVG;
+            injectSvg(logoCircle, SP_LOGO_SVG);
             
             logoZone.appendChild(logoCircle);
             barContent.appendChild(logoZone);
@@ -455,21 +485,6 @@
             barContent.appendChild(statsZone);
             
             bar.appendChild(barContent);
-            
-            // Add styles using DOM
-            const styleEl = document.createElement('style');
-            styleEl.textContent = `
-                @keyframes sp-pulse-flash {
-                    0% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(59, 130, 246, 0)); }
-                    50% { transform: scale(1.15); filter: drop-shadow(0 0 15px rgba(59, 130, 246, 0.8)); }
-                    100% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(59, 130, 246, 0)); }
-                }
-                #sp-logo-zone.sp-flash {
-                    animation: sp-pulse-flash 1s ease-in-out infinite;
-                }
-            `;
-            bar.appendChild(styleEl);
-
             document.body.appendChild(bar);
             
             // Initialize Position
@@ -492,7 +507,7 @@
                     if (left > vw - minVisible || left + barWidth < minVisible || 
                         top > vh - minVisible || top + barHeight < minVisible) {
                         // Reset to default position - button was lost off-screen
-                        window.SP.Log.warn('Button position was off-screen, resetting to default');
+                        window.SP.Logger.warn('Button position was off-screen, resetting to default');
                         const initRect = bar.getBoundingClientRect();
                         bar.style.left = initRect.left + 'px';
                         bar.style.top = initRect.top + 'px';
@@ -618,8 +633,7 @@
             // 3. Build table
             const table = Utils.createEl('table', ['sp-search-table']);
             table.id = 'sp-search-table';
-            table.innerHTML = `
-                <tr>
+            const tableHtml = `<tr>
                     <td class="sp-search-col">
                         <div class="sp-search-header">BPIP</div>
                         <div class="sp-search-row">
@@ -641,8 +655,13 @@
                             <button id="sp-n-btn">Go</button>
                         </div>
                     </td>
-                </tr>
-            `;
+                </tr>`;
+            const tblParser = new DOMParser();
+            const tblDoc = tblParser.parseFromString(`<table>${tableHtml}</table>`, 'text/html');
+            const parsedTbl = tblDoc.querySelector('table');
+            while (parsedTbl.firstChild) {
+                table.appendChild(parsedTbl.firstChild);
+            }
 
             // 4. Insert where Google form was (top) or prepend to search form fallback
             if (googleForm) {
@@ -801,9 +820,8 @@
               const backdrop = Utils.createEl('div', ['sp-settings-backdrop']);
               backdrop.id = 'sp-settings-root';
               
-              // Full HTML Structure
-              backdrop.innerHTML = `
-                <div class="sp-settings-modal" id="sp-settings-window">
+              // Full HTML Structure (no innerHTML)
+              const modalHtml = `<div class="sp-settings-modal" id="sp-settings-window">
                     <div class="sp-settings-header" id="sp-settings-drag-handle" style="cursor: move;">
                         <div class="sp-settings-title">
                             ShadowPulse Settings
@@ -946,6 +964,11 @@
                         </div>
                     </div>
                 </div>`;
+              const mParser = new DOMParser();
+              const mDoc = mParser.parseFromString(modalHtml, 'text/html');
+              while (mDoc.body.firstChild) {
+                  backdrop.appendChild(mDoc.body.firstChild);
+              }
               
               document.body.appendChild(backdrop);
               setTimeout(() => backdrop.classList.add('sp-settings-open'), 10);
@@ -1038,7 +1061,7 @@
              const btcRow = backdrop.querySelector('#sp-btc-row');
 
              chrome.storage.local.get(['sp_theme', 'sp_btc_source', 'sp_show_graph', 'sp_show_pulse', 'sp_flash_logo', 'sp_btc_address'], res => {
-                themeSel.value = res.sp_theme || 'light';
+                themeSel.value = res.sp_theme || localStorage.getItem('sp_theme_sync') || 'light';
                 graphSel.value = (res.sp_show_graph !== false) ? "true" : "false";
                 btcRow.style.display = (res.sp_show_graph !== false) ? 'flex' : 'none';
                 btcSel.value = res.sp_btc_source || 'binance';
@@ -1211,34 +1234,42 @@
                          } else {
                              nameBtn.textContent = '✗';
                              const errMsg = (resp && resp.data && resp.data.message) ? resp.data.message : 'Unknown error';
-                             if (window.SP.Config.DEBUG) window.SP.Log.error('Name change failed:', errMsg);
+                             if (window.SP.Config.DEBUG) window.SP.Logger.error('Name change failed:', errMsg);
                              console.error('ShadowPulse: Failed to change name:', errMsg);
                          }
                      });
                  });
              });
 
-             // Wire Faucet Activity link — uses single-use token instead of raw UUID
-             chrome.storage.local.get(['sp_uuid'], res => {
-                 const faLink = backdrop.querySelector('#sp-faucet-activity-link');
-                 if (faLink && res.sp_uuid) {
-                     faLink.addEventListener('click', (e) => {
-                         e.preventDefault();
+             // Wire Faucet Activity link — reads UUID fresh on each click
+             const faLink = backdrop.querySelector('#sp-faucet-activity-link');
+             if (faLink) {
+                 faLink.addEventListener('click', (e) => {
+                     e.preventDefault();
+                     chrome.storage.local.get(['sp_uuid'], res => {
+                         if (!res.sp_uuid) {
+                             window.SP.Logger.warn('[Faucet Link] No UUID available yet');
+                             return;
+                         }
                          chrome.runtime.sendMessage({
                              type: "CREATE_ACTIVITY_TOKEN",
                              payload: { uuid: res.sp_uuid }
                          }, resp => {
-                             if (chrome.runtime.lastError) return;
+                             if (chrome.runtime.lastError) {
+                                 window.SP.Logger.error('[Faucet Link] BG error:', chrome.runtime.lastError.message);
+                                 return;
+                             }
                              if (resp && resp.success && resp.data && resp.data.status === 'success' && resp.data.token) {
                                  const url = `${window.SP.Config.BASE_URL}/reports/faucet_activity.php?token=${encodeURIComponent(resp.data.token)}`;
+                                 window.SP.Logger.info('[Faucet Link] Opening activity page');
                                  chrome.runtime.sendMessage({ type: "OPEN_TAB", payload: { url: url } });
                              } else {
-                                 window.SP.Log.error("Failed to create activity token");
+                                 window.SP.Logger.error('[Faucet Link] Failed to create activity token. Response:', resp);
                              }
                          });
                      });
-                 }
-             });
+                 });
+             }
 
              // Stats Update
              const updateStats = () => {
@@ -1287,9 +1318,11 @@
                      secToggle.style.borderColor = '#ef4444';
                      secToggle.style.color = '#ef4444';
                      secToggle.setAttribute('title', 'Backup Required!');
+                     secToggle.classList.add('sp-show-flash');
                      ackSel.value = "false";
                  } else {
                      ackSel.value = "true";
+                     secToggle.classList.remove('sp-show-flash');
                  }
              });
 
@@ -1308,10 +1341,12 @@
                      secToggle.style.borderColor = '';
                      secToggle.style.color = '';
                      secToggle.removeAttribute('title');
+                     secToggle.classList.remove('sp-show-flash');
                  } else {
                      secToggle.style.borderColor = '#ef4444';
                      secToggle.style.color = '#ef4444';
                      secToggle.setAttribute('title', 'Backup Required!');
+                     secToggle.classList.add('sp-show-flash');
                  }
              });
 
@@ -1323,12 +1358,15 @@
                      const code = codeDisp.textContent;
                      if(code && code !== '...') {
                          navigator.clipboard.writeText(code).then(() => {
-                             const originalHtml = copyBtn.innerHTML;
+                             const svgClone = copyBtn.querySelector('svg') ? copyBtn.querySelector('svg').cloneNode(true) : null;
                              copyBtn.textContent = "COPIED";
                              copyBtn.style.color = "#22c55e";
                              copyBtn.style.fontSize = "10px";
                              setTimeout(() => {
-                                 copyBtn.innerHTML = originalHtml;
+                                 copyBtn.textContent = '';
+                                 if (svgClone) {
+                                     copyBtn.appendChild(svgClone.cloneNode(true));
+                                 }
                                  copyBtn.style.color = "";
                                  copyBtn.style.fontSize = "";
                              }, 2000);
@@ -1394,5 +1432,17 @@
         }
 
     };
+
+    // --- STATE SUBSCRIPTIONS ---
+    // Subscribe to logo state changes so UI updates automatically
+    (function() {
+        const State = window.SP.State;
+        if (!State) return;
+        State.on('logo:changed', (evt) => {
+            if (window.SP.UI && window.SP.UI.updateLogo) {
+                window.SP.UI.updateLogo(evt.to);
+            }
+        });
+    })();
 
 })();

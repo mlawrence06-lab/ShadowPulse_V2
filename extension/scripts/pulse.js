@@ -60,6 +60,7 @@
                          payload.topic_id = meta.topicId;
                          payload.board_id = meta.boardId;
                          payload.topic_title = meta.topicTitle;
+                         payload.page_count = meta.pageCount || 1;
                      } else {
                          payload.board_id = meta.boardId;
                          payload.is_board_view = true;
@@ -70,7 +71,11 @@
                         type: "TRACK_VIEW",
                         payload: payload
                     });
+                 }).catch(err => {
+                     window.SP.Logger.error('[Pulse] trackView: failed to read uuid:', err);
                  });
+            }).catch(err => {
+                window.SP.Logger.error('[Pulse] trackView: failed to read public_id:', err);
             });
         },
 
@@ -80,7 +85,8 @@
                 topicId: "0",
                 boardId: "0",
                 topicTitle: "",
-                boardTitle: ""
+                boardTitle: "",
+                pageCount: 1
             };
             
             // Extract from URL / Breadcrumbs
@@ -88,7 +94,19 @@
             const tMatch = window.location.href.match(/topic=(\d+)/);
             if (tMatch) meta.topicId = tMatch[1];
 
-            // 2. Title from Header
+            // 2. Page Count from SMF navPages
+            const navPages = document.querySelectorAll('a.navPages');
+            let maxPage = 1;
+            navPages.forEach(link => {
+                const txt = link.textContent.trim();
+                const num = parseInt(txt, 10);
+                if (!isNaN(num) && num > maxPage) {
+                    maxPage = num;
+                }
+            });
+            meta.pageCount = maxPage;
+
+            // 3. Title from Header
             const allHeaders = document.querySelectorAll("td.catbg, div.catbg, .header, td"); 
             for (const el of allHeaders) {
                  const text = el.textContent; 
@@ -102,12 +120,12 @@
                  }
             }
             
-            // 3. Fallback Title
+            // 4. Fallback Title
             if (!meta.topicTitle) {
                 meta.topicTitle = document.title.replace(" - Bitcoin Forum", "").trim();
             }
 
-            // 4. Board ID (Try Nav)
+            // 5. Board ID (Try Nav)
             const navLinks = document.querySelectorAll(".navigate_section a, div.nav a");
             for (const link of navLinks) {
                 const bMatch = link.href.match(/board=(\d+)/);
@@ -346,10 +364,19 @@
                  btnPulse.classList.add("sp-pulse-clicked");
                  setTimeout(() => btnPulse.classList.remove("sp-pulse-clicked"), 1000);
                  
-                 let pid = await window.SP.Utils.getState('sp_public_id');
-                 const uuid = await window.SP.Utils.getState('sp_uuid');
+                 let pid, uuid;
+                 try {
+                     pid = await window.SP.Utils.getState('sp_public_id');
+                     uuid = await window.SP.Utils.getState('sp_uuid');
+                 } catch (err) {
+                     window.SP.Logger.error('[Pulse] Failed to read identity:', err);
+                     btnPulse.classList.remove("sp-pulse-clicked");
+                     btnPulse.classList.add("sp-flash-error");
+                     setTimeout(() => btnPulse.classList.remove("sp-flash-error"), 1000);
+                     return;
+                 }
                  
-                 window.SP.Log.info(`Pulsing Topic:${topicId} Msg:${msgId}...`);
+                 window.SP.Logger.info(`Pulsing Topic:${topicId} Msg:${msgId}...`);
 
                  const payload = {
                     voter_id: pid,
@@ -378,7 +405,7 @@
                       if (response && response.success) {
                           // Sync identity if server used a different public_id
                           if (response.data && response.data.voter_id && String(response.data.voter_id) !== String(pid)) {
-                              window.SP.Log.warn('Identity sync: updating sp_public_id to match server');
+                              window.SP.Logger.warn('Identity sync: updating sp_public_id to match server');
                               window.SP.Utils.setState('sp_public_id', response.data.voter_id);
                               pid = response.data.voter_id;
                           }
@@ -443,7 +470,7 @@
                         });
                      } else {
                          if(response && response.error) {
-                             window.SP.Log.error("Batch Pulse Fetch Error (BG)", response.error);
+                             window.SP.Logger.error("Batch Pulse Fetch Error (BG)", response.error);
                          }
                      }
                 });

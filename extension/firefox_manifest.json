@@ -1,15 +1,18 @@
 {
   "manifest_version": 3,
   "name": "ShadowPulse",
-  "version": "2.5.2",
+  "version": "2.6.0",
   "description": "BitcoinTalk Alternative Recognition Tool",
   "browser_specific_settings": {
     "gecko": {
       "id": "shadowpulse@shadowpulse.live",
-      "strict_min_version": "109.0"
+      "strict_min_version": "140.0",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
     },
     "gecko_android": {
-      "strict_min_version": "113.0"
+      "strict_min_version": "142.0"
     }
   },
   "permissions": ["storage", "clipboardWrite"],
@@ -33,6 +36,7 @@
       "js": [
         "scripts/theme_boot.js",
         "scripts/utils.js",
+        "scripts/state.js",
         "scripts/ui.js",
         "scripts/faucet.js",
         "scripts/stats.js",
