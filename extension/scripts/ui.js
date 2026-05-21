@@ -242,6 +242,8 @@
                     [storageKey]: newTheme,
                 }, () => {
                      window.SP.UI.applyThemeLogic(currentMode);
+                     const cloudKey = currentMode === 'dark' ? 'theme_custom_dark' : 'theme_custom_light';
+                     window.SP.UI.saveSettingsToCloud({ [cloudKey]: JSON.stringify(newTheme), theme_mode: currentMode });
                      const oldText = saveBtn.innerText;
                      saveBtn.innerText = "SAVED!";
                      setTimeout(() => saveBtn.innerText = oldText, 800);
@@ -341,6 +343,29 @@
 
     window.SP.UI = {
         
+        
+        // Save settings to cloud (debounced)
+        _saveTimer: null,
+        saveSettingsToCloud: function(updates) {
+            if (this._saveTimer) clearTimeout(this._saveTimer);
+            this._saveTimer = setTimeout(() => {
+                chrome.storage.local.get(['sp_uuid', 'sp_theme', 'sp_show_graph', 'sp_show_pulse', 'sp_flash_logo', 'custom_name'], res => {
+                    if (!res.sp_uuid) return;
+                    const payload = { uuid: res.sp_uuid };
+                    if (updates.theme_mode !== undefined) payload.theme_mode = updates.theme_mode;
+                    else if (res.sp_theme) payload.theme_mode = res.sp_theme;
+                    if (updates.show_graph !== undefined) payload.show_graph = updates.show_graph;
+                    else payload.show_graph = res.sp_show_graph !== false;
+                    if (updates.show_pulse !== undefined) payload.show_pulse = updates.show_pulse;
+                    else payload.show_pulse = res.sp_show_pulse !== false;
+                    if (updates.flash_logo !== undefined) payload.flash_logo = updates.flash_logo;
+                    else payload.flash_logo = res.sp_flash_logo !== false;
+                    if (updates.custom_name !== undefined) payload.custom_name = updates.custom_name;
+                    else if (res.custom_name) payload.custom_name = res.custom_name;
+                    chrome.runtime.sendMessage({ type: "SAVE_USER_SETTINGS", payload: payload });
+                });
+            }, 500);
+        },
         
         applyThemeLogic: function(themeMode) {
             // Clear emergency background set by theme_boot.js to prevent FOUC
@@ -1084,6 +1109,7 @@
              themeSel.addEventListener('change', (e) => {
                  chrome.storage.local.set({ sp_theme: e.target.value });
                  this.applyThemeLogic(e.target.value);
+                 this.saveSettingsToCloud({ theme_mode: e.target.value });
              });
              
              graphSel.addEventListener('change', (e) => {
@@ -1092,16 +1118,20 @@
                  btcRow.style.display = show ? 'flex' : 'none';
                  const gz = document.getElementById('sp-stats-zone');
                  if(gz) gz.style.display = show ? 'flex' : 'none';
+                 this.saveSettingsToCloud({ show_graph: show });
              });
 
              pulseSel.addEventListener('change', (e) => {
-                 chrome.storage.local.set({ sp_show_pulse: e.target.value === 'true' });
+                 const show = e.target.value === 'true';
+                 chrome.storage.local.set({ sp_show_pulse: show });
+                 this.saveSettingsToCloud({ show_pulse: show });
              });
 
              flashSel.addEventListener('change', (e) => {
                  const show = e.target.value === 'true';
                  chrome.storage.local.set({ sp_flash_logo: show });
                  toggleBtcAddressRow(show, backdrop);
+                 this.saveSettingsToCloud({ flash_logo: show });
              });
 
              // BTC Address Validation & Save
@@ -1229,6 +1259,7 @@
                          }
                          if (resp && resp.success && resp.data && resp.data.status === 'success') {
                              chrome.storage.local.set({ custom_name: val, sp_public_id: val });
+                             window.SP.UI.saveSettingsToCloud({ custom_name: val });
                              nameBtn.textContent = '✓';
                              nameInp.style.borderColor = '';
                          } else {
@@ -1412,13 +1443,25 @@
                              return;
                          }
                          if(resp && resp.success && resp.data.status === 'success') {
-                             chrome.storage.local.set({
+                             const serverSettings = resp.data.data.settings || {};
+                             const updates = {
                                  sp_uuid: code,
                                  sp_public_id: resp.data.data.public_id,
                                  // Prefer server, fallback to local, then empty
                                  sp_btc_address: resp.data.data.btc_address || localRes.sp_btc_address || "",
-                                 sp_theme: localRes.sp_theme || 'light'
-                             }, () => {
+                                 sp_theme: serverSettings.theme_mode || localRes.sp_theme || 'light'
+                             };
+                             if (serverSettings.show_graph !== undefined) updates.sp_show_graph = serverSettings.show_graph;
+                             if (serverSettings.show_pulse !== undefined) updates.sp_show_pulse = serverSettings.show_pulse;
+                             if (serverSettings.flash_logo !== undefined) updates.sp_flash_logo = serverSettings.flash_logo;
+                             if (serverSettings.custom_name !== undefined) updates.custom_name = serverSettings.custom_name;
+                             if (serverSettings.theme_custom_light) {
+                                 try { updates.sp_custom_light = JSON.parse(serverSettings.theme_custom_light); } catch(e) {}
+                             }
+                             if (serverSettings.theme_custom_dark) {
+                                 try { updates.sp_custom_dark = JSON.parse(serverSettings.theme_custom_dark); } catch(e) {}
+                             }
+                             chrome.storage.local.set(updates, () => {
                                  resBtn.textContent = 'Success';
                                  setTimeout(() => window.location.reload(), 500);
                              });

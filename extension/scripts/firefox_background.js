@@ -156,6 +156,23 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             return true;
         }
 
+        if (request.type === "SAVE_USER_SETTINGS") {
+            const payload = request.payload || {};
+            const params = new URLSearchParams();
+            Object.keys(payload).forEach(key => {
+                if (payload[key] !== undefined && payload[key] !== null) {
+                    params.append(key, typeof payload[key] === 'object' ? JSON.stringify(payload[key]) : payload[key]);
+                }
+            });
+            fetchWithRetry(`${CONFIG.API_BASE_URL}/save_user_settings.php`, {
+                method: 'POST', body: params
+            })
+            .then(response => response.json())
+            .then(data => sendResponse({ success: true, data: data }))
+            .catch(err => sendResponse({ success: false, error: err.message }));
+            return true;
+        }
+
         if (request.type === "REGISTER_IDENTITY") {
             const { public_id, uuid, btc_address } = request.payload || {};
             const params = new URLSearchParams();
