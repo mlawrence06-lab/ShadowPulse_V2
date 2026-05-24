@@ -93,16 +93,16 @@
     }
   }
 
-  async function startHeartbeat() {
+  function startHeartbeat() {
     const Config = window.SP.Config;
     let lastPulseTs = -1;
     let isBeating = false;
-    let heartbeatTimeout = null;
-    let isRunning = false;
+    let nextTimer = null;
+    let beatScheduled = false;
+    let active = false;
 
-    async function beat() {
-      if (document.visibilityState === "hidden") return;
-
+    async function doBeat() {
+      if (document.visibilityState === 'hidden') return;
       if (isBeating) {
         Logger.warn('[Heartbeat] Skipping: previous beat still running');
         return;
@@ -110,17 +110,11 @@
 
       isBeating = true;
       try {
-        let pid;
-        try {
-          pid = await window.SP.Utils.getState("sp_public_id");
-        } catch (e) {
-          Logger.error('[Heartbeat] Failed to read identity:', e.message);
-          return;
-        }
+        const pid = await window.SP.Utils.getState('sp_public_id');
 
         const res = await Promise.race([
           chrome.runtime.sendMessage({
-            type: "GET_LATEST_PULSE",
+            type: 'GET_LATEST_PULSE',
             voter_id: pid,
           }),
           new Promise((_, reject) =>
@@ -129,55 +123,52 @@
         ]);
 
         if (!res || !res.data) {
-          Logger.warn('[Heartbeat] Background returned no data. Response:', res);
+          Logger.warn('[Heartbeat] Background returned no data');
           return;
         }
 
         const data = res.data;
 
-        // A. Dispatch Stats
-        try {
-          if (data.price_stats) {
+        // Stats
+        if (data.price_stats) {
+          try {
             document.dispatchEvent(
-              new CustomEvent("sp-heartbeat", { detail: data.price_stats }),
+              new CustomEvent('sp-heartbeat', { detail: data.price_stats })
             );
+          } catch (err) {
+            Logger.error('[Heartbeat] Stats dispatch error:', err);
           }
-        } catch (err) {
-          Logger.error('[Heartbeat] Stats dispatch error:', err);
         }
 
         const newPulseTs = parseFloat(data.last_pulse) || 0;
         const lastPulseBy = data.last_pulse_by;
 
-        // B. Check Faucet
+        // Faucet
         try {
-          const val = data.btc_active;
-          const isBtc = val === 1 || val === "1" || val === true;
+          const isBtc = data.btc_active === 1 || data.btc_active === '1' || data.btc_active === true;
           const faucetState = window.SP.State.getFaucetState();
 
           if (isBtc) {
             Logger.info('[Heartbeat] btc_active=true');
-            if (faucetState === window.SP.State.Faucet.IDLE || 
+            if (faucetState === window.SP.State.Faucet.IDLE ||
                 faucetState === window.SP.State.Faucet.CLOSED ||
                 faucetState === window.SP.State.Faucet.CLAIMED ||
                 faucetState === window.SP.State.Faucet.ERROR) {
               window.SP.Faucet.checkEligibility();
             }
-          } else {
-            if (faucetState !== window.SP.State.Faucet.IDLE) {
-              Logger.info('[Heartbeat] btc_active=false, resetting faucet');
-              window.SP.Faucet.reset();
-            }
+          } else if (faucetState !== window.SP.State.Faucet.IDLE) {
+            Logger.info('[Heartbeat] btc_active=false, resetting faucet');
+            window.SP.Faucet.reset();
           }
         } catch (err) {
           Logger.error('[Heartbeat] Faucet check error:', err);
         }
 
-        // C. Check Pulse
+        // Pulse flash
         try {
           if (lastPulseTs >= 0 && newPulseTs > lastPulseTs) {
             if (String(lastPulseBy) !== String(pid)) {
-              Logger.info('[Heartbeat] New pulse detected from', lastPulseBy, 'msg_id=', data.msg_id);
+              Logger.info('[Heartbeat] New pulse from', lastPulseBy, 'msg_id=', data.msg_id);
               window.SP.State.setLogoState(window.SP.State.Logo.PULSE_BLUE);
               window.SP.Pulse.flashPulseButton(data.msg_id);
             } else {
@@ -190,42 +181,47 @@
           Logger.error('[Heartbeat] Pulse check error:', err);
         }
       } catch (e) {
-        Logger.error('[Heartbeat] Background fetch failed:', e.message || e);
+        Logger.error('[Heartbeat] Failed:', e.message || e);
       } finally {
         isBeating = false;
       }
     }
 
-    function runBeat() {
-      if (!isRunning) return;
-      beat().finally(() => {
-        if (isRunning) {
-          heartbeatTimeout = setTimeout(runBeat, Config.POLLING_INTERVAL);
-        }
+    function scheduleNext() {
+      if (!active || beatScheduled) return;
+      beatScheduled = true;
+      nextTimer = setTimeout(() => {
+        beatScheduled = false;
+        doBeat().finally(() => {
+          if (active) scheduleNext();
+        });
+      }, Config.POLLING_INTERVAL);
+    }
+
+    function start() {
+      if (active) return;
+      active = true;
+      doBeat().finally(() => {
+        if (active) scheduleNext();
       });
     }
 
-    function startHeartbeatLoop() {
-      if (isRunning) return;
-      isRunning = true;
-      runBeat();
-    }
-
-    function stopHeartbeatLoop() {
-      isRunning = false;
-      if (heartbeatTimeout) {
-        clearTimeout(heartbeatTimeout);
-        heartbeatTimeout = null;
+    function stop() {
+      active = false;
+      beatScheduled = false;
+      if (nextTimer) {
+        clearTimeout(nextTimer);
+        nextTimer = null;
       }
     }
 
-    startHeartbeatLoop();
+    start();
 
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") {
-        startHeartbeatLoop();
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        start();
       } else {
-        stopHeartbeatLoop();
+        stop();
       }
     });
   }

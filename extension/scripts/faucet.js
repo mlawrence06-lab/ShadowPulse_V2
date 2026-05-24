@@ -13,6 +13,8 @@
         _retryCount: 0,
         MAX_RETRIES: 3,
 
+        // AUDIT: Delay system removed. All users see faucet simultaneously.
+
         checkEligibility: function() {
             const State = window.SP.State;
             const Logger = window.SP.Logger;
@@ -36,7 +38,6 @@
                         this._retryCount = 0;
                     } else {
                         State.setFaucetState(State.Faucet.ERROR, { reason: 'timeout', retry: this._retryCount });
-                        this._scheduleRetry(5000);
                     }
                 }
             }, CHECK_TIMEOUT_MS);
@@ -109,10 +110,6 @@
             if (status.can_claim === true || status.can_claim === 1 || status.can_claim === '1') {
                 State.setFaucetState(State.Faucet.ACTIVE, status);
                 this._startWindowTimer();
-            } else if (status.reason === 'wait_delay' && status.delay_remaining > 0) {
-                State.setFaucetState(State.Faucet.DELAYED, status);
-                const cappedDelay = Math.min(status.delay_remaining, 300);
-                this._scheduleRetry(cappedDelay * 1000);
             } else if (status.reason === 'already_claimed') {
                 State.setFaucetState(State.Faucet.CLAIMED, status);
             } else if (status.reason === 'window_closed') {
@@ -136,12 +133,7 @@
             }, FAUCET_WINDOW_MS);
         },
 
-        _scheduleRetry: function(ms) {
-            this._clearCheckTimer();
-            this._checkTimer = setTimeout(() => {
-                this.checkEligibility();
-            }, ms);
-        },
+        // _scheduleRetry removed: no per-user delays in v2.6.4
 
         _clearSafetyTimer: function() {
             if (this._safetyTimer) { clearTimeout(this._safetyTimer); this._safetyTimer = null; }
@@ -168,7 +160,7 @@
             const Logger = window.SP.Logger;
             const current = State.getFaucetState();
 
-            if (current !== State.Faucet.ACTIVE && current !== State.Faucet.DELAYED) {
+            if (current !== State.Faucet.ACTIVE) {
                 Logger.warn('[Faucet] Claim called but state is:', current);
                 return;
             }
