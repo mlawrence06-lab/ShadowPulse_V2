@@ -97,13 +97,16 @@
     const Config = window.SP.Config;
     let lastPulseTs = -1;
     let isBeating = false;
+    let heartbeatTimeout = null;
+    let isRunning = false;
 
     async function beat() {
+      if (document.visibilityState === "hidden") return;
+
       if (isBeating) {
         Logger.warn('[Heartbeat] Skipping: previous beat still running');
         return;
       }
-      if (document.visibilityState === "hidden") return;
 
       isBeating = true;
       try {
@@ -115,10 +118,15 @@
           return;
         }
 
-        const res = await chrome.runtime.sendMessage({
-          type: "GET_LATEST_PULSE",
-          voter_id: pid,
-        });
+        const res = await Promise.race([
+          chrome.runtime.sendMessage({
+            type: "GET_LATEST_PULSE",
+            voter_id: pid,
+          }),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Background message timeout')), 15000)
+          )
+        ]);
 
         if (!res || !res.data) {
           Logger.warn('[Heartbeat] Background returned no data. Response:', res);
@@ -188,29 +196,37 @@
       }
     }
 
-    let heartbeatInterval = null;
+    function runBeat() {
+      if (!isRunning) return;
+      beat().finally(() => {
+        if (isRunning) {
+          heartbeatTimeout = setTimeout(runBeat, Config.POLLING_INTERVAL);
+        }
+      });
+    }
 
     function startHeartbeatLoop() {
-        if (heartbeatInterval) clearInterval(heartbeatInterval);
-        heartbeatInterval = setInterval(beat, Config.POLLING_INTERVAL);
-        beat();
+      if (isRunning) return;
+      isRunning = true;
+      runBeat();
     }
 
     function stopHeartbeatLoop() {
-        if (heartbeatInterval) {
-            clearInterval(heartbeatInterval);
-            heartbeatInterval = null;
-        }
+      isRunning = false;
+      if (heartbeatTimeout) {
+        clearTimeout(heartbeatTimeout);
+        heartbeatTimeout = null;
+      }
     }
 
     startHeartbeatLoop();
-    
+
     document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible") {
-            startHeartbeatLoop();
-        } else {
-            stopHeartbeatLoop();
-        }
+      if (document.visibilityState === "visible") {
+        startHeartbeatLoop();
+      } else {
+        stopHeartbeatLoop();
+      }
     });
   }
 })();

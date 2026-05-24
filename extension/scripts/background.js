@@ -16,7 +16,8 @@ const RETRY_OPTS = {
     retries: 2,
     factor: 2,
     minTimeout: 1000,
-    maxTimeout: 5000
+    maxTimeout: 5000,
+    requestTimeout: 10000
 };
 
 // --- HELPERS ---
@@ -27,8 +28,11 @@ async function wait(ms) {
 
 
 async function fetchWithRetry(url, options = {}, retries = RETRY_OPTS.retries) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), RETRY_OPTS.requestTimeout);
+
     try {
-        const response = await fetch(url, options);
+        const response = await fetch(url, { ...options, signal: controller.signal });
         if (!response.ok) {
              // For 5xx errors, we retry. For 4xx, we likely shouldn't (client error).
              if (response.status >= 500) {
@@ -49,6 +53,8 @@ async function fetchWithRetry(url, options = {}, retries = RETRY_OPTS.retries) {
             return fetchWithRetry(url, options, retries - 1);
         }
         throw err;
+    } finally {
+        clearTimeout(timeoutId);
     }
 }
 
