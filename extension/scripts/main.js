@@ -155,9 +155,10 @@
         // Faucet
         try {
           const isBtc = data.btc_active === 1 || data.btc_active === '1' || data.btc_active === true;
+          const isTrigger = String(lastPulseBy) === String(pid);
           const faucetState = window.SP.State.getFaucetState();
 
-          if (isBtc) {
+          if (isBtc && !isTrigger) {
             Logger.info('[Heartbeat] btc_active=true');
             if (faucetState === window.SP.State.Faucet.IDLE ||
                 faucetState === window.SP.State.Faucet.CLOSED ||
@@ -166,7 +167,7 @@
               window.SP.Faucet.checkEligibility();
             }
           } else if (faucetState !== window.SP.State.Faucet.IDLE) {
-            Logger.info('[Heartbeat] btc_active=false, resetting faucet');
+            Logger.info('[Heartbeat] btc_active=false or self-triggered, resetting faucet');
             window.SP.Faucet.reset();
           }
         } catch (err) {
