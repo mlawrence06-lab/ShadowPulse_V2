@@ -56,10 +56,19 @@
   function setupStateSubscriptions() {
     const State = window.SP.State;
 
-    // Log all state transitions for debugging
+    // Bridge faucet state to logo state so the gold logo appears when faucet is active
     State.on('faucet:changed', (evt) => {
       const metaStr = evt.meta && Object.keys(evt.meta).length ? '| meta=' + JSON.stringify(evt.meta) : '';
       Logger.info('[State] Faucet:', evt.from, '→', evt.to, metaStr);
+
+      if (evt.to === State.Faucet.ACTIVE) {
+        State.setLogoState(State.Logo.FAUCET_GOLD);
+      } else if (evt.from === State.Faucet.ACTIVE &&
+                 (evt.to === State.Faucet.IDLE ||
+                  evt.to === State.Faucet.CLOSED ||
+                  evt.to === State.Faucet.CLAIMED)) {
+        State.setLogoState(State.Logo.NORMAL);
+      }
     });
 
     State.on('logo:changed', (evt) => {
