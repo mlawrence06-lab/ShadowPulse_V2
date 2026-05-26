@@ -532,7 +532,6 @@
                     if (left > vw - minVisible || left + barWidth < minVisible || 
                         top > vh - minVisible || top + barHeight < minVisible) {
                         // Reset to default position - button was lost off-screen
-                        window.SP.Logger.warn('Button position was off-screen, resetting to default');
                         const initRect = bar.getBoundingClientRect();
                         bar.style.left = initRect.left + 'px';
                         bar.style.top = initRect.top + 'px';
@@ -1292,7 +1291,7 @@
                              }
                              if (resp && resp.success && resp.data && resp.data.status === 'success' && resp.data.token) {
                                  const url = `${window.SP.Config.BASE_URL}/reports/faucet_activity.php?token=${encodeURIComponent(resp.data.token)}`;
-                                 window.SP.Logger.info('[Faucet Link] Opening activity page');
+                                 // opening activity page
                                  chrome.runtime.sendMessage({ type: "OPEN_TAB", payload: { url: url } });
                              } else {
                                  window.SP.Logger.error('[Faucet Link] Failed to create activity token. Response:', resp);

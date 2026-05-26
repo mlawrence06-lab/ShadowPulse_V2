@@ -13,19 +13,15 @@
         _retryCount: 0,
         MAX_RETRIES: 3,
 
-        // AUDIT: Delay system removed. All users see faucet simultaneously.
-
         checkEligibility: function() {
             const State = window.SP.State;
             const Logger = window.SP.Logger;
 
             if (State.getFaucetState() === State.Faucet.CHECKING) {
-                Logger.info('[Faucet] Already checking, skipping');
                 return;
             }
 
             State.setFaucetState(State.Faucet.CHECKING);
-            Logger.info('[Faucet] Starting eligibility check');
 
             this._clearSafetyTimer();
             this._safetyTimer = setTimeout(() => {
@@ -70,8 +66,6 @@
                         return;
                     }
 
-                    Logger.info('[Faucet] Checking eligibility for UUID:', res.sp_uuid.slice(0, 8) + '...');
-
                     chrome.runtime.sendMessage({
                         type: 'GET_FAUCET_STATUS',
                         payload: { public_id: res.sp_public_id || '', uuid: res.sp_uuid }
@@ -102,7 +96,6 @@
             }
 
             const status = result.data;
-            Logger.info('[Faucet] Server says can_claim=', status.can_claim, 'reason=', status.reason);
 
             // Reset retry count on successful response
             this._retryCount = 0;
@@ -128,12 +121,9 @@
         _startWindowTimer: function() {
             this._clearWindowTimer();
             this._windowTimer = setTimeout(() => {
-                window.SP.Logger.info('[Faucet] Window timer expired');
                 window.SP.State.setFaucetState(window.SP.State.Faucet.CLOSED, { reason: 'timer_expired' });
             }, FAUCET_WINDOW_MS);
         },
-
-        // _scheduleRetry removed: no per-user delays in v2.6.4
 
         _clearSafetyTimer: function() {
             if (this._safetyTimer) { clearTimeout(this._safetyTimer); this._safetyTimer = null; }
@@ -146,8 +136,6 @@
         },
 
         reset: function() {
-            const Logger = window.SP.Logger;
-            Logger.info('[Faucet] Resetting');
             this._clearSafetyTimer();
             this._clearWindowTimer();
             this._clearCheckTimer();
@@ -171,7 +159,6 @@
                     return;
                 }
 
-                Logger.info('[Faucet] Creating claim token...');
 
                 chrome.runtime.sendMessage({
                     type: 'CREATE_CLAIM_TOKEN',
@@ -184,7 +171,6 @@
                     if (resp && resp.success && resp.data && resp.data.status === 'success' && resp.data.token) {
                         const baseUrl = window.SP.Config.API_BASE_URL.replace('/api', '');
                         const claimUrl = `${baseUrl}/claim.php?token=${encodeURIComponent(resp.data.token)}`;
-                        Logger.info('[Faucet] Opening claim page');
                         chrome.runtime.sendMessage({ type: 'OPEN_TAB', payload: { url: claimUrl } });
                         this.reset();
                     } else {

@@ -31,8 +31,6 @@
     document.getElementById('sp-floating-bar-root')?.remove();
     document.getElementById('sp-settings-root')?.remove();
 
-    Logger.info('ShadowPulse v' + chrome.runtime.getManifest().version + ' Initializing...');
-
     // Set up state subscriptions before anything else runs
     setupStateSubscriptions();
 
@@ -58,9 +56,6 @@
 
     // Bridge faucet state to logo state so the gold logo appears when faucet is active
     State.on('faucet:changed', (evt) => {
-      const metaStr = evt.meta && Object.keys(evt.meta).length ? '| meta=' + JSON.stringify(evt.meta) : '';
-      Logger.info('[State] Faucet:', evt.from, '→', evt.to, metaStr);
-
       if (evt.to === State.Faucet.ACTIVE) {
         State.setLogoState(State.Logo.FAUCET_GOLD);
       } else if (evt.from === State.Faucet.ACTIVE &&
@@ -72,7 +67,7 @@
     });
 
     State.on('logo:changed', (evt) => {
-      Logger.info('[State] Logo:', evt.from, '→', evt.to);
+      // no-op
     });
   }
 
@@ -95,7 +90,6 @@
     if (Object.keys(updates).length > 0) {
       try {
         await Utils.setLocalState(updates);
-        Logger.info('Identity generated:', Object.keys(updates));
       } catch (e) {
         Logger.error('ensureIdentity: failed to save identity:', e);
       }
@@ -113,7 +107,6 @@
     async function doBeat() {
       if (document.visibilityState === 'hidden') return;
       if (isBeating) {
-        Logger.warn('[Heartbeat] Skipping: previous beat still running');
         return;
       }
 
@@ -132,7 +125,6 @@
         ]);
 
         if (!res || !res.data) {
-          Logger.warn('[Heartbeat] Background returned no data');
           return;
         }
 
@@ -144,6 +136,7 @@
             document.dispatchEvent(
               new CustomEvent('sp-heartbeat', { detail: data.price_stats })
             );
+            chrome.storage.local.set({ sp_cached_price_stats: data.price_stats });
           } catch (err) {
             Logger.error('[Heartbeat] Stats dispatch error:', err);
           }
@@ -159,7 +152,6 @@
           const faucetState = window.SP.State.getFaucetState();
 
           if (isBtc && !isTrigger) {
-            Logger.info('[Heartbeat] btc_active=true');
             if (faucetState === window.SP.State.Faucet.IDLE ||
                 faucetState === window.SP.State.Faucet.CLOSED ||
                 faucetState === window.SP.State.Faucet.CLAIMED ||
@@ -167,7 +159,6 @@
               window.SP.Faucet.checkEligibility();
             }
           } else if (faucetState !== window.SP.State.Faucet.IDLE) {
-            Logger.info('[Heartbeat] btc_active=false or self-triggered, resetting faucet');
             window.SP.Faucet.reset();
           }
         } catch (err) {
@@ -178,15 +169,13 @@
         try {
           if (lastPulseTs >= 0 && newPulseTs > lastPulseTs) {
             if (String(lastPulseBy) !== String(pid)) {
-              Logger.info('[Heartbeat] New pulse from', lastPulseBy, 'msg_id=', data.msg_id);
               window.SP.State.setLogoState(window.SP.State.Logo.PULSE_BLUE);
               window.SP.Pulse.flashPulseButton(data.msg_id);
             } else {
-              Logger.info('[Heartbeat] Pulse from self ignored');
+              // pulse from self ignored
             }
           }
           lastPulseTs = newPulseTs;
-          Logger.info('[Heartbeat] Pulse baseline updated:', lastPulseTs);
         } catch (err) {
           Logger.error('[Heartbeat] Pulse check error:', err);
         }

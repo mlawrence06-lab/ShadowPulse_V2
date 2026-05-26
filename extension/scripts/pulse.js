@@ -376,7 +376,6 @@
                      return;
                  }
                  
-                 window.SP.Logger.info(`Pulsing Topic:${topicId} Msg:${msgId}...`);
 
                  const payload = {
                     voter_id: pid,
@@ -405,7 +404,6 @@
                       if (response && response.success) {
                           // Sync identity if server used a different public_id
                           if (response.data && response.data.voter_id && String(response.data.voter_id) !== String(pid)) {
-                              window.SP.Logger.warn('Identity sync: updating sp_public_id to match server');
                               window.SP.Utils.setState('sp_public_id', response.data.voter_id);
                               pid = response.data.voter_id;
                           }

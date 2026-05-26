@@ -35,8 +35,10 @@ async function wait(ms) {
 
 
 async function fetchWithRetry(url, options = {}, retries = RETRY_OPTS.retries) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
     try {
-        const response = await fetch(url, options);
+        const response = await fetch(url, { ...options, signal: controller.signal });
         if (!response.ok) {
              // For 5xx errors, we retry. For 4xx, we likely shouldn't (client error).
              if (response.status >= 500) {

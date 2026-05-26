@@ -15,8 +15,6 @@
             const graphEl = bar.querySelector('.sp-stats-graph');
 
             // Remove any previously registered listener before adding a new one.
-            // Without this, every page navigation stacks another listener on document,
-            // each holding a closure over stale DOM references — the primary memory leak.
             if (_heartbeatListener) {
                 document.removeEventListener('sp-heartbeat', _heartbeatListener);
             }
@@ -28,6 +26,14 @@
             };
 
             document.addEventListener('sp-heartbeat', _heartbeatListener);
+
+            // Render cached stats immediately so the graph isn't blank
+            // while waiting for the first heartbeat round-trip.
+            chrome.storage.local.get(['sp_cached_price_stats'], res => {
+                if (res.sp_cached_price_stats) {
+                    this.render(priceEl, graphEl, res.sp_cached_price_stats);
+                }
+            });
         },
 
         
